@@ -39,12 +39,11 @@ class ChessPlayerBot(Player):
             message += "We are playing this chess with this board.\n"
             message += str(self.board) + '\'
         else:
-            self.engine.play(self.board)
-            previous_letter = messages[-1]['content'][7].lower()
-            # introduce a small probability that the player fails
-            letter = self._sample_letter(previous_letter)
+            result = self.engine.play(self.board, chess.engine.limit(time=0.1))
+            board.push(result.move)
+            message +=  result.move + '\n'
         # return a string whose first and last tokens start with the next letter     
-        return f"{letter}xxx from {self.player}, turn {turn_idx} {letter.replace('I SAY: ', '')}xxx."
+        return message
 
 
 class Chess:
