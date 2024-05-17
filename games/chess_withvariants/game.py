@@ -6,9 +6,45 @@ from backends import Model, ModelSpec, get_model_for, load_model_registry
 
 logger = get_logger(__name__)  # clem logging
 
+import chess
 
+from games.chess_withvariants.utils.board_functions import  board_to_text,matrix_to_fen,fen_to_matrix
+from games.chess_withvariants.utils.board_functions import  get_path_stockfish_bin
 
+class ChessPlayerBot(Player):
+    def __init__(self, model_name: str, player: str, board: chess.Board):
+        # always initialise the Player class with the model_name argument
+        # if the player is a program and you don't want to make API calls to
+        # LLMS, use model_name="programmatic"
+        super().__init__(model_name)
+        self.player: str = player
+        self.board: chess.Board = board
+        #should check if the engine is there, if its not download it. 
+        #Also this is a GPL License so we have to credit the authors I think
+        # TODO : test if engine exists; download if not latest version, etc etc. Function for downloading should be implemented in utils/general.py
+        self.engine: SimpleEngine =  chess.engine.SimpleEngine.popen_uci(get_path_stockfish_bin)
+        #We will store the board 
+        
+        # a list to keep the dialogue history
+        self.history: List = []
 
+    # implement this method as you prefer, with these same arguments
+    def _custom_response(self, messages, turn_idx) -> str:
+        """Return a mock message with the suitable letter and format."""
+        # get the first letter of the content of the last message
+        # messages is a list of dictionaries with messages in openai API format
+        message = "" 
+        if (turn_idx == 1 and self.player == 'w'):
+            #We should print the board    
+            message += "We are playing this chess with this board.\n"
+            message += str(self.board) + '\'
+        else:
+            self.engine.play(self.board)
+            previous_letter = messages[-1]['content'][7].lower()
+            # introduce a small probability that the player fails
+            letter = self._sample_letter(previous_letter)
+        # return a string whose first and last tokens start with the next letter     
+        return f"{letter}xxx from {self.player}, turn {turn_idx} {letter.replace('I SAY: ', '')}xxx."
 
 
 class Chess:
