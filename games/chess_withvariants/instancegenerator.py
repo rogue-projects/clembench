@@ -50,19 +50,27 @@ class ChessGameInstanceGenerator(GameInstanceGenerator):
     fenWithoutBoard= ' w - 0 1'
     baseBoard = 'rnbqkbnr/pppppppp/8/8/8/8/PPPPPPPP/RNBQKBNR'
 
-    def __init__(self, game_name):
-        super().__init__(game_name)
-        self.game_name = game_name
+    ##TODO: TEST
+    def __init__(self):
+        super().__init__(GAME_NAME)
 
+    ##TODO: TEST
     def on_generate(self):
         #Dont need this one; we will generate each Board in a different manner
         #self.experiment_config = self.load_json("resources/config.json")
         #self.instance_utils = InstanceUtils(self.experiment_config, self.game_name)
+        baseline_template = self.load_template('resources/default_prompt_baseline.template')
         experiment = self.add_experiment('baseline')
         instance = self.add_game_instance(experiment,0)
         instance['board']= self.generateBoard()
+        skill = 'expert'
+        prompt = string.Template(baseline_template).substitute(skill=skill, board=board)
+        instance['initial_prompt'] = prompt
+        instance['n_turns']= 50
 
+        
 
+    ##TODO: TEST
    
     ###UNTESTED FUNCTION
     def evaluateBoardFair(board):
@@ -86,13 +94,14 @@ class ChessGameInstanceGenerator(GameInstanceGenerator):
         else:
             return  w_value +allowed_error >= b_value
 
+    ##TODO: TEST
     ###UNTESTED FUNCTION
     def randomPiece():
         """ Returns a random piece """
         piece_options= piece_values.keys()
         return piece_options[random.randint(0,len(piece_options)]
     
-
+    ##TODO: TEST
     ###UNTESTED FUNCTION
     def randomBoard(piece_amount=16):
         """
@@ -133,6 +142,7 @@ class ChessGameInstanceGenerator(GameInstanceGenerator):
         return board
 
 
+    ##TODO: TEST
     def generateBoard(board=baseBoard):
         """
             Returns the standard  board configuration without castling. 
@@ -140,8 +150,9 @@ class ChessGameInstanceGenerator(GameInstanceGenerator):
         """
         return chess.Board(fen=f'{board} {fenWithoutBoard}')
    
+    ##TODO: TEST
     def create_prompt(self, board: chess.Board):
-        return f"Your initial board is {board_to_text(boad)}. Let's play a game where you give me the next move in the UCI notation."
+        return f"Your initial board is \n{str(boad)}\n. Let's play a game where you give me the next move in the UCI notation."
 
 
         

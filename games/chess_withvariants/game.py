@@ -11,51 +11,93 @@ import chess
 from games.chess_withvariants.utils.board_functions import  board_to_text,matrix_to_fen,fen_to_matrix
 from games.chess_withvariants.utils.board_functions import  get_path_stockfish_bin
 
-class ChessPlayerBot(Player):
+
+#should check if the engine is there, if its not download it. 
+#Also this is a GPL License so we have to credit the authors I think
+# TODO : test if engine exists; download if not latest version, etc etc. Function for downloading should be implemented in utils/general.py
+
+engine =  chess.engine.SimpleEngine.popen_uci(get_path_stockfish_bin)
+
+class ChessPlayer(Player)
     def __init__(self, model_name: str, player: str, board: chess.Board):
         # always initialise the Player class with the model_name argument
         # if the player is a program and you don't want to make API calls to
         # LLMS, use model_name="programmatic"
-        super().__init__(model_name)
+        self.model_name: str = model_name
         self.player: str = player
         self.board: chess.Board = board
-        #should check if the engine is there, if its not download it. 
-        #Also this is a GPL License so we have to credit the authors I think
-        # TODO : test if engine exists; download if not latest version, etc etc. Function for downloading should be implemented in utils/general.py
-        self.engine: SimpleEngine =  chess.engine.SimpleEngine.popen_uci(get_path_stockfish_bin)
-        #We will store the board 
         
         # a list to keep the dialogue history
         self.history: List = []
 
-    # implement this method as you prefer, with these same arguments
     def _custom_response(self, messages, turn_idx) -> str:
-        """Return a mock message with the suitable letter and format."""
-        # get the first letter of the content of the last message
-        # messages is a list of dictionaries with messages in openai API format
+        """Return a message with the next move(message) iff we are using a bot model."""
+        if (self.model_name != "programmatic" ):
+            raise PlayerResponseRequestError("Requesting bot responde from model" )
         message = "" 
         if (turn_idx == 1 and self.player == 'w'):
             #We should print the board    
-            message += "We are playing this chess with this board.\n"
+            message += "Board:\n"
             message += str(self.board) + '\'
         else:
-            result = self.engine.play(self.board, chess.engine.limit(time=0.1))
+            result = engine.play(self.board, chess.engine.limit(time=0.1))
             board.push(result.move)
             message +=  result.move + '\n'
         # return a string whose first and last tokens start with the next letter     
         return message
 
 
-class Chess:
+class Chess(GameMaster):
     """A game of chess between two players  
     """
+    # We only need 2 players: white/black refers to pieces
+    # '' will be using our default(Stockfish)
+    def __init__(self, experiment: Dict, white: str, black: str): 
+        super().__init__(GAME_NAME, experiment, player_backends)
+        # save experiment and player attributes that will be necessary later
+        self.topic = experiment['name']
+        self.white = white
+        self.black = black
+        self.board = experiment.
 
-    def __init__(self, game_instance: Dict, player_models: Tuple[Model]):
-        self.player_models = player_models
-        self.game_id = game_instance['game_id']
-        self.max_turns = game_instance['max_turns']
-        self.current_turn: int = 1
-        initial_prompt = game_instance['player_2_initial_prompt']
+        # initialise attributes that will be used for the evaluation scores
+        self.aborted: bool = False
+        self.lose: bool = False
+        self.complete_turns: int = 0
+
+    def setup(self, first_letter: str, n_turns: int, prompt_player_a: str,
+              prompt_player_b: str, game_id: int) -> None:
+        """Setup the episode (mandatory)."""
+
+        self.n_turns = n_turns
+
+        # instantiate both players
+        self.player_a = ChessPlayer(self.white, 'W', first_letter)
+        self.player_b = Speaker(self.black, 'B', first_letter)
+
+        # initialise game variables
+        self.current_turn: int = 0
+        self.current_letter: str = first_letter
+
+        # initialise common metrics
+        self.request_counts = [0] * (n_turns + 1)
+        self.parsed_request_counts = [0] * (n_turns + 1)
+        self.violated_request_counts = [0] * (n_turns + 1)
+
+        # add initial prompts to each player's messages
+        self.initiate(prompt_player_a, prompt_player_b)
+
+        # always log the details of the players in this format (see logdoc)
+        self.log_players({
+            'GM': 'Game master for FirstLast',
+            'Player 1': f'Player A: {self.model_a}',
+            'Player 2': f'Player B: {self.model_b}'
+            })
+
+        # log any additional keys that will be relevant for evaluation
+        self.log_key('n_turns', n_turns)
+
+
 
 
     def proceeds(self):
