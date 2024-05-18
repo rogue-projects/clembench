@@ -12,16 +12,12 @@ import chess
 import sys
 import clemgame
 from clemgame.clemgame import GameInstanceGenerator
-from games.chess_withvariants.utils.board_functions import  piece_values,board_to_text,matrix_to_fen,fen_to_matrix
+from games.chess_withvariants.utils.board_functions import  piece_values,board_to_text,matrix_to_fen,fen_to_matrix,generateBoard
 
 
 GAME_NAME = "chess_withvariants"
 N_INSTANCES= 2 #Let's start small
 SEED = 123
-
-
-
-
 
 
 
@@ -46,9 +42,7 @@ class ChessGameInstanceGenerator(GameInstanceGenerator):
             - Combination of last 2 methods (which opens exponentially different generations).
 
     """
-    # We want our games to not allow Castling 
-    fenWithoutBoard= 'w - - 0 1'
-    baseBoard = 'rnbqkbnr/pppppppp/8/8/8/8/PPPPPPPP/RNBQKBNR'
+    
 
     ##TODO: TEST
     def __init__(self):
@@ -62,7 +56,7 @@ class ChessGameInstanceGenerator(GameInstanceGenerator):
         baseline_template = self.load_template('resources/default_prompt_baseline.template')
         experiment = self.add_experiment('baseline')
         instance = self.add_game_instance(experiment,0)
-        instance['board']= str(self.generateBoard())
+        instance['board']= str(generateBoard())
         skill = 'expert'
         prompt = string.Template(baseline_template).substitute(skill=skill, board=instance['board'])
         instance['initial_prompt'] = prompt
@@ -142,13 +136,6 @@ class ChessGameInstanceGenerator(GameInstanceGenerator):
         return board
 
 
-    ##TODO: TEST
-    def generateBoard(self,board=baseBoard):
-        """
-            Returns the standard  board configuration without castling. 
-            Useful as a baseline.
-        """
-        return chess.Board(fen=f'{board} {self.fenWithoutBoard}')
    
     ##TODO: TEST
     def create_prompt(self, board: chess.Board):

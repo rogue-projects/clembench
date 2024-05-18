@@ -10,6 +10,19 @@ piece_values = {
     'q': 2538
 }
 
+# We want our games to not allow Castling 
+fenWithoutBoard= 'w - - 0 1'
+baseBoard = 'rnbqkbnr/pppppppp/8/8/8/8/PPPPPPPP/RNBQKBNR'
+
+
+##TODO: TEST
+def generateBoard(board=baseBoard):
+    """
+        Returns the standard  board configuration without castling. 
+        Useful as a baseline.
+    """
+    return chess.Board(fen=f'{board} {fenWithoutBoard}')
+
 
 def board_to_text(board):
     text=""
