@@ -8,7 +8,8 @@ from tqdm import tqdm
 import re
 import random
 import chess
-
+import sys
+sys.path.append('..')
 
 from clemgame.clemgame import GameInstanceGenerator
 from games.chess_withvariants import  piece_values,board_to_text,matrix_to_fen,fen_to_matrix
@@ -99,7 +100,7 @@ class ChessGameInstanceGenerator(GameInstanceGenerator):
     def randomPiece():
         """ Returns a random piece """
         piece_options= piece_values.keys()
-        return piece_options[random.randint(0,len(piece_options)]
+        return piece_options[random.randint(0,len(piece_options))]
     
     ##TODO: TEST
     ###UNTESTED FUNCTION
@@ -114,7 +115,7 @@ class ChessGameInstanceGenerator(GameInstanceGenerator):
         board =  [['Q']*boardL for _ in range(boardL)]
         if pieceAmount > 24:
             raise 'Too many pieces!!'
-        while !evaluateBoardFair(board): 
+        while not evaluateBoardFair(board): 
             board =  [[None]*boardL for _ in range(boardL)]
             board[0][random.randint(0,boardL-1)]='k' 
             board[-1][random.randint(0,boardL-1)]='K' 

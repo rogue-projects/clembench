@@ -205,7 +205,7 @@ class Chess(GameMaster):
 
 
     def turn(self) -> None:
-        """Perform a game turn, a single utteranbe by black or white."""
+        """Perform a game turn, a single utterance by black or white."""
         try:
             last_move =  self.board.peek()
             current_turn ='w' if 'b'==board.color_at(last_move[2:4]) else 'b'
@@ -233,4 +233,22 @@ class Chess(GameMaster):
         self.complete_turns += 1
 
 
+class ChessGameBenchmark(GameBenchmark):
+    """Integrate the game into the benchmark run."""
+    def __init__(self):
+        super().__init__(GAME_NAME)
 
+    # defines whether the game is single player or not
+    def is_single_player(self):
+        return False
+
+    # add a description of your game
+    def get_description(self):
+        return "Chess with some variants that guarantee leading to new board configurations."
+
+    # copy this, replacing the name of the game master in the return statement
+    def create_game_master(self,
+                           experiment: Dict,
+                           player_backends: List[str]
+                           ) -> GameMaster:
+        return Chess(experiment, player_backends)
