@@ -1,4 +1,3 @@
-
 import chess
 
 # https://github.com/official-stockfish/Stockfish/blob/master/src/types.h#L192-L196

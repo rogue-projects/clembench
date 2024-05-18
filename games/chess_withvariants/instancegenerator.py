@@ -6,17 +6,16 @@ Creates files in ./instances and ./requests
 from tqdm import tqdm
 
 import re
+import string
 import random
 import chess
 import sys
-sys.path.append('..')
-
+import clemgame
 from clemgame.clemgame import GameInstanceGenerator
-from games.chess_withvariants import  piece_values,board_to_text,matrix_to_fen,fen_to_matrix
+from games.chess_withvariants.utils.board_functions import  piece_values,board_to_text,matrix_to_fen,fen_to_matrix
 
 
-
-GAME_NAME = "chess"
+GAME_NAME = "chess_withvariants"
 N_INSTANCES= 2 #Let's start small
 SEED = 123
 
@@ -48,7 +47,7 @@ class ChessGameInstanceGenerator(GameInstanceGenerator):
 
     """
     # We want our games to not allow Castling 
-    fenWithoutBoard= ' w - 0 1'
+    fenWithoutBoard= 'w - - 0 1'
     baseBoard = 'rnbqkbnr/pppppppp/8/8/8/8/PPPPPPPP/RNBQKBNR'
 
     ##TODO: TEST
@@ -63,9 +62,9 @@ class ChessGameInstanceGenerator(GameInstanceGenerator):
         baseline_template = self.load_template('resources/default_prompt_baseline.template')
         experiment = self.add_experiment('baseline')
         instance = self.add_game_instance(experiment,0)
-        instance['board']= self.generateBoard()
+        instance['board']= str(self.generateBoard())
         skill = 'expert'
-        prompt = string.Template(baseline_template).substitute(skill=skill, board=board)
+        prompt = string.Template(baseline_template).substitute(skill=skill, board=instance['board'])
         instance['initial_prompt'] = prompt
         instance['n_turns']= 50
 
@@ -144,12 +143,12 @@ class ChessGameInstanceGenerator(GameInstanceGenerator):
 
 
     ##TODO: TEST
-    def generateBoard(board=baseBoard):
+    def generateBoard(self,board=baseBoard):
         """
             Returns the standard  board configuration without castling. 
             Useful as a baseline.
         """
-        return chess.Board(fen=f'{board} {fenWithoutBoard}')
+        return chess.Board(fen=f'{board} {self.fenWithoutBoard}')
    
     ##TODO: TEST
     def create_prompt(self, board: chess.Board):
@@ -159,4 +158,5 @@ class ChessGameInstanceGenerator(GameInstanceGenerator):
         
 
 if __name__ == "__main__":
-   ChessGameInstanceGenerator(GAME_NAME).generate()
+    random.seed(SEED)
+    ChessGameInstanceGenerator().generate()
