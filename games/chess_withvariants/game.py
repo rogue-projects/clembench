@@ -8,8 +8,11 @@ logger = get_logger(__name__)  # clem logging
 
 import chess
 
-from games.chess_withvariants.utils.board_functions import  board_to_text,matrix_to_fen,fen_to_matrix
+from games.chess_withvariants.utils.board_functions import  board_to_text,matrix_to_fen,fen_to_matrix,generateBoard
 from games.chess_withvariants.utils.board_functions import  get_path_stockfish_bin
+
+from clemgame.clemgame import GameMaster,Player
+from clemgame import get_logger
 
 
 #should check if the engine is there, if its not download it. 
@@ -17,7 +20,7 @@ from games.chess_withvariants.utils.board_functions import  get_path_stockfish_b
 # TODO : test if engine exists; download if not latest version, etc etc. Function for downloading should be implemented in utils/general.py
 
 
-class ChessPlayer(Player)
+class ChessPlayer(Player):
     def __init__(self, model_name: str, player: str, board: chess.Board):
         # always initialise the Player class with the model_name argument
         # if the player is a program and you don't want to make API calls to
@@ -38,7 +41,7 @@ class ChessPlayer(Player)
         if (turn_idx == 1 and self.player == 'w'):
             #We should print the board    
             message += "Board:\n"
-            message += str(self.board) + '\'
+            message += str(self.board) + '\n'
         else:
             result = engine.play(self.board, chess.engine.limit(time=0.1))
             board.push(result.move)
@@ -58,7 +61,7 @@ class Chess(GameMaster):
         self.topic = experiment['name']
         self.white = white
         self.black = black
-        self.board = experiment.board
+        self.board = generateBoard(experiment.board)
 
         # initialise attributes that will be used for the evaluation scores
         self.aborted: bool = False
