@@ -71,8 +71,8 @@ class Chess(GameMaster):
         self.n_turns = n_turns
 
         # instantiate both players
-        self.white = ChessPlayer(self.white, 'W', board)
-        self.black = ChessPlayer(self.black, 'B', board)
+        self.white = ChessPlayer(self.white, 'w', board)
+        self.black = ChessPlayer(self.black, 'b', board)
 
         # initialise game variables
         self.current_turn: int = 0
@@ -114,9 +114,9 @@ class Chess(GameMaster):
         
         # also log the messages as events for the transcriptions
         action = {'type': 'send message', 'content': prompt_w}
-        self.log_event(from_='GM', to='W', action=action)
+        self.log_event(from_='GM', to='w', action=action)
         action = {'type': 'send message', 'content': prompt_b}
-        self.log_event(from_='GM', to='B', action=action)
+        self.log_event(from_='GM', to='b', action=action)
 
     def play(self) -> None:
         """Play the game until the end (mandatory)."""
@@ -148,9 +148,17 @@ class Chess(GameMaster):
                 and not self.aborted
                 and not self.lose)
 
+    def _append_utterance(self, utterance: str, player: str, role: str) -> None:
+        """Add an utterance to the history of a player (firstlast specific)."""
+        assert player in ('w', 'b')
+        if player == 'w':
+            self.white.history.append({'role': role, 'content': utterance})
+        else:
+            self.black.history.append({'role': role, 'content': utterance})
+
     @staticmethod
     def parse(utterance: str) -> Tuple[str, str]:
-        """Check if the utterance is valid and return first and last tokens (firstlast specific)."""
+        """Check if the utterance is valid and return move,check(or checkmate)."""
         first_row = 'a'
         last_row = char(int(first_row) + 7)
         first_col='1'
@@ -174,44 +182,54 @@ class Chess(GameMaster):
 
         return None,None
 
+    def _get_utterance(self, player: str) -> str:
+        """Get utterance from a player and log it (firstlast specific)."""
+        assert player in ('w', 'b')
+        # make an API call (or get a programmatic response) from the player 
+        if player == 'w':
+            player_class = self.white
+        else :
+            player_class  = self.black
+        prompt, raw_answer, answer = player_class (player_class .history,
+                                                self.current_turn)
+        # add API call to the records
+        action = {'type': 'get message', 'content': answer}
+        self.log_event(from_=player, to='GM', action=action,
+                    call=(copy.deepcopy(prompt), raw_answer))
+        # add reply to its own memory
+        self._append_utterance(answer, player, 'assistant')
+
+        # increase the number of API requests 
+        self.request_counts[self.current_turn] += 1
+        return answer
+
+
     def turn(self) -> None:
-        """Perform a game turn, utterances by A and B (firstlast specific)."""
+        """Perform a game turn, a single utteranbe by black or white."""
+        try:
+            last_move =  self.board.peek()
+            current_turn ='w' if 'b'==board.color_at(last_move[2:4]) else 'b'
+            next_turn = 'b' if current_turn=='w' else 'w'
+        except:
+            current_turn = 'w'
+            next_turn = 'b'
         # get player A's reply and add it to its history
-        answer_a = self._get_utterance('a')
-
-        # check if the game should be aborted or lost
-        is_valid_turn = self._check_validity(answer_a)
-        if not is_valid_turn:
-            # stop game
-            return None
-
+        cur_move = self._get_utterance(current_turn)
+        move,check = self.parse(cur_move)
         # add A's reply to B's history
-        self._append_utterance(answer_a, 'b', 'user')
+        self._append_utterance(next_move,cur_turn ,'user')
+
         # also add the reply to the transcript
-        action = {'type': 'send message', 'content': answer_a}
-        self.log_event(from_='GM', to='Player 2', action=action)
-
-        # next player gets the next letter in the alphabet
-        self.update_letter()
-
-        # now do the same for player B
-
-        # get player B's reply and add it to its history
-        answer_b = self._get_utterance('b')
+        action = {'type': 'send message', 'content': cur_move}
+        self.log_event(from_='GM', to=cur_turn, action=action)
+       
+        board.push(move)
 
         # check if the game should be aborted or lost
-        is_valid_turn = self._check_validity(answer_b)
-        if not is_valid_turn:
+        if not board.is_valid():
             # stop game
             return None
 
-        # add B's reply to A's history
-        self._append_utterance(answer_b, 'a', 'user')
-        # also add the reply to the transcript
-        action = {'type': 'send message', 'content': answer_b}
-        self.log_event(from_='GM', to='Player 1', action=action)
-
-        self.update_letter()
         self.complete_turns += 1
 
 
