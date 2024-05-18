@@ -16,7 +16,6 @@ from games.chess_withvariants.utils.board_functions import  get_path_stockfish_b
 #Also this is a GPL License so we have to credit the authors I think
 # TODO : test if engine exists; download if not latest version, etc etc. Function for downloading should be implemented in utils/general.py
 
-engine =  chess.engine.SimpleEngine.popen_uci(get_path_stockfish_bin)
 
 class ChessPlayer(Player)
     def __init__(self, model_name: str, player: str, board: chess.Board):
@@ -26,7 +25,8 @@ class ChessPlayer(Player)
         self.model_name: str = model_name
         self.player: str = player
         self.board: chess.Board = board
-        
+        self.engine =  None if model_name != programmatic else chess.engine.SimpleEngine.popen_uci(get_path_stockfish_bin())
+
         # a list to keep the dialogue history
         self.history: List = []
 
@@ -51,33 +51,31 @@ class Chess(GameMaster):
     """A game of chess between two players  
     """
     # We only need 2 players: white/black refers to pieces
-    # '' will be using our default(Stockfish)
+    # 'programmatic' will be using our default(Stockfish)
     def __init__(self, experiment: Dict, white: str, black: str): 
         super().__init__(GAME_NAME, experiment, player_backends)
         # save experiment and player attributes that will be necessary later
         self.topic = experiment['name']
         self.white = white
         self.black = black
-        self.board = experiment.
+        self.board = experiment.board
 
         # initialise attributes that will be used for the evaluation scores
         self.aborted: bool = False
         self.lose: bool = False
         self.complete_turns: int = 0
 
-    def setup(self, first_letter: str, n_turns: int, prompt_player_a: str,
-              prompt_player_b: str, game_id: int) -> None:
+    def setup(self, board: chess.Board, n_turns: int, initial_prompt: str) -> None:
         """Setup the episode (mandatory)."""
 
         self.n_turns = n_turns
 
         # instantiate both players
-        self.player_a = ChessPlayer(self.white, 'W', first_letter)
-        self.player_b = Speaker(self.black, 'B', first_letter)
+        self.white = ChessPlayer(self.white, 'W', board)
+        self.black = ChessPlayer(self.black, 'B', board)
 
         # initialise game variables
         self.current_turn: int = 0
-        self.current_letter: str = first_letter
 
         # initialise common metrics
         self.request_counts = [0] * (n_turns + 1)
@@ -85,33 +83,136 @@ class Chess(GameMaster):
         self.violated_request_counts = [0] * (n_turns + 1)
 
         # add initial prompts to each player's messages
-        self.initiate(prompt_player_a, prompt_player_b)
+        self.initiate(initial_prompt)
 
         # always log the details of the players in this format (see logdoc)
         self.log_players({
             'GM': 'Game master for FirstLast',
-            'Player 1': f'Player A: {self.model_a}',
-            'Player 2': f'Player B: {self.model_b}'
+            'white': f'{self.white}',
+            'black': f'{self.black}'
             })
 
         # log any additional keys that will be relevant for evaluation
         self.log_key('n_turns', n_turns)
 
+    def initiate(self, initial_prompt: str) -> None:
+        """Initialise the dialogue history (firstlast specific)."""
+        # always call log_next_turn what a turn starts
+        self.log_next_turn()
+
+        # append the initial message of each player to their history
+        # the value user means the message is from an interlocutor of the model
+        if random.randint(0,1) ==0 :
+            prompt_w = '' 
+            prompt_b = initial_prompt
+        else: 
+            #TODO ADD FIRST MOVE AND UPDATE BOARD
+            prompt_w = initial_prompt ##FIRST MOVE
+            prompt_b = '' 
+        self.white.history.append({'role': 'user', 'content': prompt_w})
+        self.black.history.append({'role': 'user', 'content': prompt_b})
+        
+        # also log the messages as events for the transcriptions
+        action = {'type': 'send message', 'content': prompt_w}
+        self.log_event(from_='GM', to='W', action=action)
+        action = {'type': 'send message', 'content': prompt_b}
+        self.log_event(from_='GM', to='B', action=action)
+
+    def play(self) -> None:
+        """Play the game until the end (mandatory)."""
+        # play the game
+        while self.proceed():
+            self.current_turn += 1
+            # always call log_next_turn when a new turn starts
+            self.log_next_turn()
+            self.turn()
+        
+        if self.complete_turns == self.n_turns:
+            # log a message informing that the game was successfuly played
+            action = {'type': 'info', 'content': 'game successful'}
+            self.log_event(from_='GM', to='GM', action=action)
+
+        # log a final message saying that the game did came to an end
+        action = {'type': 'info', 'content': 'end game'}
+        self.log_event(from_='GM', to='GM', action=action)
+        # log all temporary game variables that are needed for evaluation
+        self.log_eval_assets()
 
 
 
-    def proceeds(self):
-        return self.current_turn <= self.max_turns
 
-    def answerer_turn(self):
-        _messages, _response_type, utterance = \
-            self.answerer(self.messages, self.current_turn)
-        self.messages.append({"role": "assistant", "content": utterance})
-        self.current_turn += 1
-        self.questioner.replied = True
-        self.answerer.current_contribution = utterance
 
-    def questioner_turn(self):
-        """Adds the utterance that was typed on slurk to the messages."""
-        utterance = self.questioner.get_current_message()
-        self.messages.append({"role": "user", "content": utterance})
+    def proceed(self) -> None:
+        """Check if the game loop should continue (firstlast specific)."""
+        return (self.current_turn < self.n_turns
+                and not self.aborted
+                and not self.lose)
+
+    @staticmethod
+    def parse(utterance: str) -> Tuple[str, str]:
+        """Check if the utterance is valid and return first and last tokens (firstlast specific)."""
+        first_row = 'a'
+        last_row = char(int(first_row) + 7)
+        first_col='1'
+        last_col = char(int(first_col) + 7)
+        #Check for nonsensical moves 
+        if   utterance[0] < first_row  or utterance[0] >last_row:
+            return None,None
+        if   utterance[2] < first_row  or utterance[2] >last_row:
+            return None,None
+        if   utterance[1] < first_col  or utterance[1] >last_col:
+            return None,None
+        if   utterance[3] < first_col  or utterance[3] >last_col:
+            return None,None
+        move =  utterance[0:3] 
+        if  len(utterance) not in [10,14]:
+            return None,None
+        if len(utterance) == 10 and utterance[4:] == " check":
+            return move,"check"
+        if len(utterance) == 14 and utterance[4:] == " checkmate":
+            return move,"checkmate"
+
+        return None,None
+
+    def turn(self) -> None:
+        """Perform a game turn, utterances by A and B (firstlast specific)."""
+        # get player A's reply and add it to its history
+        answer_a = self._get_utterance('a')
+
+        # check if the game should be aborted or lost
+        is_valid_turn = self._check_validity(answer_a)
+        if not is_valid_turn:
+            # stop game
+            return None
+
+        # add A's reply to B's history
+        self._append_utterance(answer_a, 'b', 'user')
+        # also add the reply to the transcript
+        action = {'type': 'send message', 'content': answer_a}
+        self.log_event(from_='GM', to='Player 2', action=action)
+
+        # next player gets the next letter in the alphabet
+        self.update_letter()
+
+        # now do the same for player B
+
+        # get player B's reply and add it to its history
+        answer_b = self._get_utterance('b')
+
+        # check if the game should be aborted or lost
+        is_valid_turn = self._check_validity(answer_b)
+        if not is_valid_turn:
+            # stop game
+            return None
+
+        # add B's reply to A's history
+        self._append_utterance(answer_b, 'a', 'user')
+        # also add the reply to the transcript
+        action = {'type': 'send message', 'content': answer_b}
+        self.log_event(from_='GM', to='Player 1', action=action)
+
+        self.update_letter()
+        self.complete_turns += 1
+
+
+
