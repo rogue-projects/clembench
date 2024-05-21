@@ -122,10 +122,11 @@ class Chess(GameMaster):
     @staticmethod
     def parse(utterance: str) -> Tuple[str, str]:
         """Check if the utterance is valid and return move,check(or checkmate)."""
+        print(utterance)
         first_row = 'a'
-        last_row = chr(int(first_row) + 7)
+        last_row = chr(ord(first_row) + 7)
         first_col='1'
-        last_col = chr(int(first_col) + 7)
+        last_col = chr(ord(first_col) + 7)
         #Check for nonsensical moves 
         if   utterance[0] < first_row  or utterance[0] >last_row:
             return None,None
@@ -171,20 +172,23 @@ class Chess(GameMaster):
         """Perform a game turn, a single utterance by black or white."""
         try:
             last_move =  self.board.peek()
-            current_turn ='w' if 'b'==board.color_at(last_move[2:4]) else 'b'
-            next_turn = 'b' if current_turn=='w' else 'w'
+            print(last_move)
+            cur_player ='w' if 'b'==board.color_at(last_move[2:4]) else 'b'
+            next_player = 'b' if cur_player=='w' else 'w'
         except:
-            current_turn = 'w'
-            next_turn = 'b'
-        # get player A's reply and add it to its history
-        cur_move = self._get_utterance(current_turn)
-        move,check = self.parse(cur_move)
-        # add A's reply to B's history
-        self._append_utterance(next_move,cur_turn ,'user')
-
+            cur_player = 'w'
+            next_player = 'b'
+        # get next player reply and add it to its history
+        cur_move = self._get_utterance(next_player)
+        
         # also add the reply to the transcript
         action = {'type': 'send message', 'content': cur_move}
         self.log_event(from_='GM', to=cur_turn, action=action)
+        move,check = self.parse(cur_move)
+        
+        # add A's reply to B's history
+        self._append_utterance(cur_move,cur_turn ,'user')
+
        
         board.push(move)
 
