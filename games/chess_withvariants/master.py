@@ -1,7 +1,7 @@
 from clemgame.clemgame import GameMaster, GameBenchmark
 from typing import List, Dict, Tuple
 from clemgame import get_logger
-
+import random,copy
 from games.chess_withvariants.utils.board_functions import *
 from games.chess_withvariants.instancegenerator import GAME_NAME
 from games.chess_withvariants.players import ChessPlayer
@@ -123,9 +123,9 @@ class Chess(GameMaster):
     def parse(utterance: str) -> Tuple[str, str]:
         """Check if the utterance is valid and return move,check(or checkmate)."""
         first_row = 'a'
-        last_row = char(int(first_row) + 7)
+        last_row = chr(int(first_row) + 7)
         first_col='1'
-        last_col = char(int(first_col) + 7)
+        last_col = chr(int(first_col) + 7)
         #Check for nonsensical moves 
         if   utterance[0] < first_row  or utterance[0] >last_row:
             return None,None

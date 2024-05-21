@@ -21,6 +21,7 @@ class ChessPlayer(Player):
         # always initialise the Player class with the model_name argument
         # if the player is a program and you don't want to make API calls to
         # LLMS, use model_name="programmatic"
+        super().__init__(model_name)
         self.model_name: str = model_name
         self.player: str = player
         self.board: chess.Board = board

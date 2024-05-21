@@ -56,10 +56,11 @@ class ChessGameInstanceGenerator(GameInstanceGenerator):
         baseline_template = self.load_template('resources/default_prompt_baseline.template')
         experiment = self.add_experiment('baseline')
         instance = self.add_game_instance(experiment,0)
-        instance['board']= str(generateBoard())
+        instance['board']= generateBoard()
         instance['n_turns']= 50
         skill = 'expert'
-        prompt = string.Template(baseline_template).substitute(skill=skill, board=instance['board'])
+        prompt = string.Template(baseline_template).substitute(skill=skill, \
+                       board=str(chess.Board(fen=instance['board'])))
         instance['initial_prompt'] = prompt
 
         

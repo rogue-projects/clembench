@@ -21,7 +21,7 @@ def generateBoard(board=baseBoard):
         Returns the standard  board configuration without castling. 
         Useful as a baseline.
     """
-    return chess.Board(fen=f'{board} {fenWithoutBoard}')
+    return f'{board} {fenWithoutBoard}'
 
 
 def board_to_text(board):
