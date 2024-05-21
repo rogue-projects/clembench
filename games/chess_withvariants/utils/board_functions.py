@@ -80,4 +80,3 @@ def fen_to_matrix(fen):
                 
     return board
 
-    return project_path

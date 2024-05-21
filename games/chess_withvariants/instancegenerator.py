@@ -57,10 +57,10 @@ class ChessGameInstanceGenerator(GameInstanceGenerator):
         experiment = self.add_experiment('baseline')
         instance = self.add_game_instance(experiment,0)
         instance['board']= str(generateBoard())
+        instance['n_turns']= 50
         skill = 'expert'
         prompt = string.Template(baseline_template).substitute(skill=skill, board=instance['board'])
         instance['initial_prompt'] = prompt
-        instance['n_turns']= 50
 
         
 
