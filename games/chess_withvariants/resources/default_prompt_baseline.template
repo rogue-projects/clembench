@@ -1,4 +1,4 @@
 Let's play a game of chess where you are an $skill  chess player. Our initial board is $board and all the pieces move like in a normal game. 
 Castling and en-passant are not allowed and like in a normal chess game the loss condition is receiving a checkmate. If you break the rules of moving in chess you lose as well.
-Moves have to be written in the format "b5b4" where the figure in b5 should be moved to position b4. Checks have to be explicitly said, for example "b5b4 check". Checkmates have to be explicitly said, for example "b5b4 checkmate".
+Moves have to be written in the format "b5b4" where the figure in b5 should be moved to position b4. Checks have to be explicitly said, for example "b5b4 check". Checkmates have to be explicitly said, for example "b5b4 checkmate". You have to write ONLY the next move.
 Your objective is to win.

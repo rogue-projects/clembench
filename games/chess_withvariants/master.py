@@ -65,13 +65,15 @@ class Chess(GameMaster):
 
         # append the initial message of each player to their history
         # the value user means the message is from an interlocutor of the model
+        hello_prompt = 'Hi, how can I help you?'
         if random.randint(0,1) ==0 :
-            prompt_w = '' 
-            prompt_b = initial_prompt
+            prompt_w =  hello_prompt
+            prompt_b = initial_prompt +  f"\n You're playing white."
         else: 
             #TODO ADD FIRST MOVE AND UPDATE BOARD
-            prompt_w = initial_prompt ##FIRST MOVE
-            prompt_b = '' 
+            prompt_w = initial_prompt + "\n You're playing black. Respond \"Ok\" to this prompt and I will give you my firs move after. "  
+            prompt_b = hello_prompt 
+
         self.white.history.append({'role': 'user', 'content': prompt_w})
         self.black.history.append({'role': 'user', 'content': prompt_b})
         

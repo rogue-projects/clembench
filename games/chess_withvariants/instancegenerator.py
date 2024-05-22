@@ -57,7 +57,7 @@ class ChessGameInstanceGenerator(GameInstanceGenerator):
         experiment = self.add_experiment('baseline')
         instance = self.add_game_instance(experiment,0)
         instance['board']= generateBoard()
-        instance['n_turns']= 50
+        instance['n_turns']= 3#50
         skill = 'expert'
         prompt = string.Template(baseline_template).substitute(skill=skill, \
                        board=str(chess.Board(fen=instance['board'])))
@@ -138,12 +138,6 @@ class ChessGameInstanceGenerator(GameInstanceGenerator):
 
 
    
-    ##TODO: TEST
-    def create_prompt(self, board: chess.Board):
-        return f"Your initial board is \n{str(boad)}\n. Let's play a game where you give me the next move in the UCI notation."
-
-
-        
 
 if __name__ == "__main__":
     random.seed(SEED)
