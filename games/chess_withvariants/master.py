@@ -1,6 +1,7 @@
 from clemgame.clemgame import GameMaster, GameBenchmark
 from typing import List, Dict, Tuple
 from clemgame import get_logger
+import clemgame.metrics as ms
 import random,copy
 from games.chess_withvariants.utils.board_functions import *
 from games.chess_withvariants.instancegenerator import GAME_NAME
@@ -18,8 +19,8 @@ class Chess(GameMaster):
         super().__init__(GAME_NAME, experiment, player_backends)
         # save experiment and player attributes that will be necessary later
         self.name = experiment['name']
-        self.white = player_backends[0]
-        self.black = player_backends[1]
+        self.white_model = player_backends[0]
+        self.black_model = player_backends[1]
 
         # initialise attributes that will be used for the evaluation scores
         self.aborted: bool = False
@@ -31,14 +32,15 @@ class Chess(GameMaster):
 
         self.n_turns = n_turns
 
-        # instantiate both players
-        self.white = ChessPlayer(self.white, 'w', board)
-        self.black = ChessPlayer(self.black, 'b', board)
 
         # initialise game variables
         self.current_turn: int = 0
         self.game_id = game_id
         self.board = chess.Board(fen=board)
+        
+        # instantiate both players
+        self.white = ChessPlayer(self.white_model, 'w', self.board)
+        self.black = ChessPlayer(self.black_model, 'b', self.board)
 
         # initialise common metrics
         self.request_counts = [0] * (n_turns + 1)
@@ -72,7 +74,7 @@ class Chess(GameMaster):
         else: 
             #TODO ADD FIRST MOVE AND UPDATE BOARD
             prompt_w = initial_prompt + "\n You're playing black. Respond \"Ok\" to this prompt and I will give you my firs move after. "  
-            prompt_b = hello_prompt 
+            prompt_b = "Ok"
 
         self.white.history.append({'role': 'user', 'content': prompt_w})
         self.black.history.append({'role': 'user', 'content': prompt_b})
@@ -82,6 +84,18 @@ class Chess(GameMaster):
         self.log_event(from_='GM', to='w', action=action)
         action = {'type': 'send message', 'content': prompt_b}
         self.log_event(from_='GM', to='b', action=action)
+    
+
+    def log_eval_assets(self) -> None:
+        """Aux to log variables needed for scoring (firstlast specific)"""
+        self.log_key('Played turns', self.current_turn)
+        self.log_key('Complete turns', self.complete_turns)
+        self.log_key(ms.METRIC_ABORTED, self.aborted)
+        self.log_key(ms.METRIC_LOSE, self.lose)
+        self.log_key(ms.METRIC_REQUEST_COUNT, self.request_counts)
+        self.log_key(ms.METRIC_REQUEST_COUNT_PARSED, self.parsed_request_counts)
+        self.log_key(ms.METRIC_REQUEST_COUNT_VIOLATED, self.violated_request_counts)
+
 
     def play(self) -> None:
         """Play the game until the end (mandatory)."""
@@ -156,7 +170,7 @@ class Chess(GameMaster):
             player_class = self.white
         else :
             player_class  = self.black
-        prompt, raw_answer, answer = player_class(player_class .history,self.current_turn)
+        prompt, raw_answer, answer = player_class(player_class.history,self.current_turn)
         # add API call to the records
         action = {'type': 'get message', 'content': answer}
         self.log_event(from_=player, to='GM', action=action,
@@ -173,7 +187,6 @@ class Chess(GameMaster):
         """Perform a game turn, a single utterance by black or white."""
         try:
             last_move =  self.board.peek()
-            print(last_move)
             cur_player ='w' if 'b'==board.color_at(last_move[2:4]) else 'b'
             next_player = 'b' if cur_player=='w' else 'w'
         except:
@@ -201,6 +214,40 @@ class Chess(GameMaster):
             return None
 
         self.complete_turns += 1
+
+
+
+
+    def compute_scores(self, episode_interactions: Dict) -> None:
+        """Compute episode-level and turn-level scores (mandatory)."""
+        played_turns = episode_interactions['Played turns']
+        complete_turns = episode_interactions['Complete turns']
+        # turn 0 was only the initial prompts, so we disregard it here
+        reqs = episode_interactions[ms.METRIC_REQUEST_COUNT][1:]
+        p_reqs = episode_interactions[ms.METRIC_REQUEST_COUNT_PARSED][1:]
+        v_reqs = episode_interactions[ms.METRIC_REQUEST_COUNT_VIOLATED][1:]
+        n_turns = len(reqs)
+
+        for turn in range(0, played_turns):
+            self.log_turn_score(turn, ms.METRIC_REQUEST_COUNT, reqs[turn])
+            self.log_turn_score(turn, ms.METRIC_REQUEST_COUNT_PARSED, p_reqs[turn])
+            self.log_turn_score(turn, ms.METRIC_REQUEST_COUNT_VIOLATED, v_reqs[turn])
+
+        aborted = int(episode_interactions[ms.METRIC_ABORTED])
+        lose = int(episode_interactions[ms.METRIC_LOSE]) if not aborted else 0
+        success =  1 - lose if not aborted else 0
+        bench_score = complete_turns / n_turns if not aborted else np.nan
+        
+        self.log_episode_score(ms.METRIC_ABORTED, aborted)
+        self.log_episode_score(ms.METRIC_LOSE, lose)
+        self.log_episode_score(ms.METRIC_SUCCESS, success)
+        self.log_episode_score(ms.METRIC_REQUEST_COUNT, sum(reqs))
+        self.log_episode_score(ms.METRIC_REQUEST_COUNT_PARSED, sum(p_reqs))
+        self.log_episode_score(ms.METRIC_REQUEST_COUNT_VIOLATED, sum(v_reqs))
+        self.log_episode_score(ms.METRIC_REQUEST_SUCCESS, sum(p_reqs) / sum(reqs))
+        self.log_episode_score(ms.BENCH_SCORE, bench_score)
+
+
 
 
 class ChessBenchmark(GameBenchmark):
