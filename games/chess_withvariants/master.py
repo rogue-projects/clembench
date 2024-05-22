@@ -38,7 +38,7 @@ class Chess(GameMaster):
         # initialise game variables
         self.current_turn: int = 0
         self.game_id = game_id
-        self.board = generateBoard(board)
+        self.board = chess.Board(fen=board)
 
         # initialise common metrics
         self.request_counts = [0] * (n_turns + 1)
@@ -154,8 +154,7 @@ class Chess(GameMaster):
             player_class = self.white
         else :
             player_class  = self.black
-        prompt, raw_answer, answer = player_class (player_class .history,
-                                                self.current_turn)
+        prompt, raw_answer, answer = player_class(player_class .history,self.current_turn)
         # add API call to the records
         action = {'type': 'get message', 'content': answer}
         self.log_event(from_=player, to='GM', action=action,
@@ -179,18 +178,20 @@ class Chess(GameMaster):
             cur_player = 'w'
             next_player = 'b'
         # get next player reply and add it to its history
-        cur_move = self._get_utterance(next_player)
-        
-        # also add the reply to the transcript
-        action = {'type': 'send message', 'content': cur_move}
-        self.log_event(from_='GM', to=cur_turn, action=action)
-        move,check = self.parse(cur_move)
+        next_move = self._get_utterance(next_player)
         
         # add A's reply to B's history
-        self._append_utterance(cur_move,cur_turn ,'user')
-
+        self._append_utterance(next_move,next_player,'user')
+        
+        # also add the reply to the transcript
+        action = {'type': 'send message', 'content': next_move}
+        self.log_event(from_='GM', to=next_move, action=action)
+        move,check = self.parse(next_move)
+        
+        if move is None:
+            return  None
        
-        board.push(move)
+        self.board.push(move)
 
         # check if the game should be aborted or lost
         if not board.is_valid():
