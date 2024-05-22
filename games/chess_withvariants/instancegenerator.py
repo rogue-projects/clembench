@@ -53,11 +53,27 @@ class ChessGameInstanceGenerator(GameInstanceGenerator):
         #Dont need this one; we will generate each Board in a different manner
         #self.experiment_config = self.load_json("resources/config.json")
         #self.instance_utils = InstanceUtils(self.experiment_config, self.game_name)
+
+        ### TESTING 
         baseline_template = self.load_template('resources/default_prompt_baseline.template')
         experiment = self.add_experiment('baseline')
         instance = self.add_game_instance(experiment,0)
         instance['board']= generateBoard()
-        instance['n_turns']= 50
+        instance['n_turns']= 4#50 #switch to 50 when done
+        skill = 'expert'
+        prompt = string.Template(baseline_template).substitute(skill=skill, \
+                       board=str(chess.Board(fen=instance['board'])))
+        instance['initial_prompt'] = prompt
+
+
+        ### GENERATING BASELINE
+        baseline_template = self.load_template('resources/default_prompt_baseline.template')
+        experiment = self.add_experiment('random16_figures')
+        instance = self.add_game_instance(experiment,1)
+        instance['board']= self.randomBoard()
+        print('---------CHOSEN BOARD-----------')
+        print(chess.Board(instance['board']))
+        instance['n_turns']= 10
         skill = 'expert'
         prompt = string.Template(baseline_template).substitute(skill=skill, \
                        board=str(chess.Board(fen=instance['board'])))
@@ -68,7 +84,7 @@ class ChessGameInstanceGenerator(GameInstanceGenerator):
     ##TODO: TEST
    
     ###UNTESTED FUNCTION
-    def evaluateBoardFair(board):
+    def evaluateBoardFair(self,board):
         """
         Check if the values of pieces on either side is fair or not
         """
@@ -77,11 +93,11 @@ class ChessGameInstanceGenerator(GameInstanceGenerator):
         b_value = 0
         for row in board:
             for piece in row:
-                if piece is None:
+                if piece is None or piece.lower()== 'k':
                     continue
-                elif piece.isUpper():
+                elif piece.isupper():
                     w_value += piece_values[piece.lower()]
-                elif piece.isLower():
+                elif piece.islower():
                     b_value += piece_values[piece]
         allowed_error= max(b_value,w_value)*error_quotient
         if  b_value < w_value:
@@ -91,14 +107,14 @@ class ChessGameInstanceGenerator(GameInstanceGenerator):
 
     ##TODO: TEST
     ###UNTESTED FUNCTION
-    def randomPiece():
+    def randomPiece(self):
         """ Returns a random piece """
-        piece_options= piece_values.keys()
-        return piece_options[random.randint(0,len(piece_options))]
+        piece_options= list(piece_values.keys())
+        return piece_options[random.randint(0,len(piece_options)-1)]
     
     ##TODO: TEST
     ###UNTESTED FUNCTION
-    def randomBoard(piece_amount=16):
+    def randomBoard(self,piece_amount=16):
         """
         Generates a random board with pieceAmount pieces per player. Follows a set of rules for  avoiding unfair configurations: 
         - The king must always be in the farthest row from the center.
@@ -107,9 +123,13 @@ class ChessGameInstanceGenerator(GameInstanceGenerator):
         """
         boardL = 8
         board =  [['Q']*boardL for _ in range(boardL)]
-        if pieceAmount > 24:
+        if piece_amount > 24:
             raise 'Too many pieces!!'
-        while not evaluateBoardFair(board): 
+        i = 0
+        while not self.evaluateBoardFair(board): 
+            print(f"attempt #{i} to generate a random board")
+            print(chess.Board(matrix_to_fen(board)))
+            i+=1
             board =  [[None]*boardL for _ in range(boardL)]
             board[0][random.randint(0,boardL-1)]='k' 
             board[-1][random.randint(0,boardL-1)]='K' 
@@ -118,7 +138,8 @@ class ChessGameInstanceGenerator(GameInstanceGenerator):
             row = 0 
             col = 0
             while pieces_added < piece_amount:
-                board[row][col] = randomPiece() 
+                if not( board[row][col] is None) and board[row][col].lower() != 'k' :
+                    board[row][col] = self.randomPiece() 
                 row+=1
                 if row == boardL: 
                     row =0
@@ -128,13 +149,14 @@ class ChessGameInstanceGenerator(GameInstanceGenerator):
             row = -1 
             col = -1
             while pieces_added < piece_amount:
-                board[row][col] = randomPiece() 
+                if not( board[row][col] is None) and board[row][col].lower() != 'k' :
+                    board[row][col] = self.randomPiece() 
                 row+= -1
                 if - row == boardL : 
                     row = -1
                     col += -1
                 pieces_added+=1
-        return board
+        return matrix_to_fen(board)
 
 
    

@@ -132,7 +132,7 @@ class Chess(GameMaster):
     @staticmethod
     def parse(utterance: str) -> Tuple[str, str]:
         """Check if the utterance is valid and return move,check(or checkmate)."""
-        print(utterance)
+        #print(utterance)
         first_row = 'a'
         last_row = chr(ord(first_row) + 7)
         first_col='1'
@@ -179,22 +179,23 @@ class Chess(GameMaster):
 
     def turn(self) -> None:
         """Perform a game turn, a single utterance by black or white."""
-        print('-----TURN-----')
+        #print('-----TURN-----')
         try:
             last_move =  self.board.peek()
             print(f'LASTMOVE {last_move}')
-            print(f'LASTMOVE {type(last_move)}')
-            print(f'SQUARE {last_move.to_square}')
-            print(f'self.board\n{self.board}')
-            print(f'parse_square {self.board.color_at(last_move.to_square)}')
-            print(f'BLACK {chess.BLACK}')
-            print(f'WHITE {chess.WHITE}')
+            #print(f'LASTMOVE {type(last_move)}')
+            #print(f'SQUARE {last_move.to_square}')
+            #print(f'self.board\n{self.board}')
+            #print(f'parse_square {self.board.color_at(last_move.to_square)}')
+            #print(f'BLACK {chess.BLACK}')
+            #print(f'WHITE {chess.WHITE}')
             cur_player ='b' if chess.BLACK==self.board.color_at(last_move.to_square) else 'w'
             next_player = 'b' if cur_player=='w' else 'w'
         except:
-            print('TURN OF WHITE')
+            #print('TURN OF WHITE')
             cur_player = 'b'
             next_player = 'w'
+        
         # get next player reply and add it to its history
         next_move = self._get_utterance(next_player)
         
@@ -208,7 +209,7 @@ class Chess(GameMaster):
         
         if move is None:
             return  None
-        print(f'move {move}') 
+        #print(f'move {next_move}') 
         self.board.push(chess.Move.from_uci(move))
 
         # check if the game should be aborted or lost
