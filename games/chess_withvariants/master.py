@@ -52,7 +52,7 @@ class Chess(GameMaster):
 
         # always log the details of the players in this format (see logdoc)
         self.log_players({
-            'GM': 'Game master for FirstLast',
+            'GM': 'Game master for Chess',
             'white': f'{self.white}',
             'black': f'{self.black}'
             })
@@ -67,14 +67,8 @@ class Chess(GameMaster):
 
         # append the initial message of each player to their history
         # the value user means the message is from an interlocutor of the model
-        hello_prompt = 'Hi, how can I help you?'
-        if random.randint(0,1) ==0 :
-            prompt_w =  hello_prompt
-            prompt_b = initial_prompt +  f"\n You're playing white."
-        else: 
-            #TODO ADD FIRST MOVE AND UPDATE BOARD
-            prompt_w = initial_prompt + "\n You're playing black. Respond \"Ok\" to this prompt and I will give you my firs move after. "  
-            prompt_b = "Ok"
+        prompt_w = initial_prompt + f"\n You're playing white."
+        prompt_b = initial_prompt + f"\n You're playing black."
 
         self.white.history.append({'role': 'user', 'content': prompt_w})
         self.black.history.append({'role': 'user', 'content': prompt_b})
@@ -128,7 +122,7 @@ class Chess(GameMaster):
                 and not self.lose)
 
     def _append_utterance(self, utterance: str, player: str, role: str) -> None:
-        """Add an utterance to the history of a player (firstlast specific)."""
+        """Add an utterance to the history of a player """
         assert player in ('w', 'b')
         if player == 'w':
             self.white.history.append({'role': role, 'content': utterance})
@@ -185,13 +179,22 @@ class Chess(GameMaster):
 
     def turn(self) -> None:
         """Perform a game turn, a single utterance by black or white."""
+        print('-----TURN-----')
         try:
             last_move =  self.board.peek()
-            cur_player ='w' if 'b'==board.color_at(last_move[2:4]) else 'b'
+            print(f'LASTMOVE {last_move}')
+            print(f'LASTMOVE {type(last_move)}')
+            print(f'SQUARE {last_move.to_square}')
+            print(f'self.board\n{self.board}')
+            print(f'parse_square {self.board.color_at(last_move.to_square)}')
+            print(f'BLACK {chess.BLACK}')
+            print(f'WHITE {chess.WHITE}')
+            cur_player ='b' if chess.BLACK==self.board.color_at(last_move.to_square) else 'w'
             next_player = 'b' if cur_player=='w' else 'w'
         except:
-            cur_player = 'w'
-            next_player = 'b'
+            print('TURN OF WHITE')
+            cur_player = 'b'
+            next_player = 'w'
         # get next player reply and add it to its history
         next_move = self._get_utterance(next_player)
         
@@ -200,13 +203,13 @@ class Chess(GameMaster):
         
         # also add the reply to the transcript
         action = {'type': 'send message', 'content': next_move}
-        self.log_event(from_='GM', to=next_move, action=action)
+        self.log_event(from_='GM', to=cur_player, action=action)
         move,check = self.parse(next_move)
         
         if move is None:
             return  None
-       
-        self.board.push(move)
+        print(f'move {move}') 
+        self.board.push(chess.Move.from_uci(move))
 
         # check if the game should be aborted or lost
         if not board.is_valid():
