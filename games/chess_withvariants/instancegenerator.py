@@ -71,8 +71,6 @@ class ChessGameInstanceGenerator(GameInstanceGenerator):
         experiment = self.add_experiment('random16_figures')
         instance = self.add_game_instance(experiment,1)
         instance['board']= self.randomBoard()
-        print('---------CHOSEN BOARD-----------')
-        print(chess.Board(instance['board']))
         instance['n_turns']= 10
         skill = 'expert'
         prompt = string.Template(baseline_template).substitute(skill=skill, \
@@ -138,24 +136,26 @@ class ChessGameInstanceGenerator(GameInstanceGenerator):
             row = 0 
             col = 0
             while pieces_added < piece_amount:
-                if not( board[row][col] is None) and board[row][col].lower() != 'k' :
+                if board[row][col] is None :
                     board[row][col] = self.randomPiece() 
-                row+=1
-                if row == boardL: 
-                    row =0
-                    col +=1
+                col+=1
+                if col == boardL: 
+                    col =0
+                    row +=1
                 pieces_added+=1
             pieces_added = 0
             row = -1 
             col = -1
             while pieces_added < piece_amount:
-                if not( board[row][col] is None) and board[row][col].lower() != 'k' :
-                    board[row][col] = self.randomPiece() 
-                row+= -1
-                if - row == boardL : 
-                    row = -1
-                    col += -1
+                if board[row][col] is None :
+                    board[row][col] = self.randomPiece().upper()
+                col += -1
+                if -col == boardL+1 : 
+                    col = -1
+                    row += -1
                 pieces_added+=1
+        print('-----FINAL BOARD-------')
+        print(chess.Board(matrix_to_fen(board)))
         return matrix_to_fen(board)
 
 
