@@ -1,5 +1,7 @@
 URL_STOCKFISH = "https://github.com/official-stockfish/Stockfish/releases/latest/download/stockfish-ubuntu-x86-64-avx2.tar"
 import os
+from sys import platform
+
 #Useful for downloading resources
 #E.G the chess engine
 # TOBETESTED
@@ -10,7 +12,11 @@ def get_path_file():
 
 #We will load the binary here
 def get_path_stockfish_bin():
-    return os.path.join(get_path_file(), "resources","stockfish-macos-x86-64" )
+    if platform == "linux" or platform == "linux2":
+        return os.path.join(get_path_file(), "resources","stockfish-ubuntu-x86-64-avx2" )
+    elif platform  == 'darwin':
+        return os.path.join(get_path_file(), "resources","stockfish-macos-x86-64" )
+
 
 
 def download_stockfish():
