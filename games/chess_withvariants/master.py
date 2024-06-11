@@ -71,7 +71,7 @@ class Chess(GameMaster):
         prompt_b = initial_prompt + f"\n You're playing black."
         if str(self.white_model) == str('programmatic'):
             move = self._get_utterance('w')
-            prompt_b +=  f"\n First move was {move}."
+            prompt_b +=  f"\n First move from white was {move}."
 
         self.white.history.append({'role': 'user', 'content': prompt_w})
         self.black.history.append({'role': 'user', 'content': prompt_b})
