@@ -69,6 +69,9 @@ class Chess(GameMaster):
         # the value user means the message is from an interlocutor of the model
         prompt_w = initial_prompt + f"\n You're playing white."
         prompt_b = initial_prompt + f"\n You're playing black."
+        if str(self.white_model) == str('programmatic'):
+            move = self._get_utterance('w')
+            prompt_b +=  f"\n First move was {move}."
 
         self.white.history.append({'role': 'user', 'content': prompt_w})
         self.black.history.append({'role': 'user', 'content': prompt_b})
@@ -133,6 +136,8 @@ class Chess(GameMaster):
     def parse(utterance: str) -> Tuple[str, str]:
         """Check if the utterance is valid and return move,check(or checkmate)."""
         #print(utterance)
+        if len(utterance) < 4:
+            return None,None
         first_row = 'a'
         last_row = chr(ord(first_row) + 7)
         first_col='1'
@@ -185,19 +190,16 @@ class Chess(GameMaster):
             print(f'LASTMOVE {last_move}')
             #print(f'LASTMOVE {type(last_move)}')
             #print(f'SQUARE {last_move.to_square}')
-            #print(f'self.board\n{self.board}')
-            #print(f'parse_square {self.board.color_at(last_move.to_square)}')
-            #print(f'BLACK {chess.BLACK}')
-            #print(f'WHITE {chess.WHITE}')
+            print(f'self.board\n{self.board}')
             cur_player ='b' if chess.BLACK==self.board.color_at(last_move.to_square) else 'w'
             next_player = 'b' if cur_player=='w' else 'w'
         except:
-            #print('TURN OF WHITE')
             cur_player = 'b'
             next_player = 'w'
         
         # get next player reply and add it to its history
         next_move = self._get_utterance(next_player)
+        print(f'NEXTMOVE {next_move}')
         
         # add A's reply to B's history
         self._append_utterance(next_move,next_player,'user')
