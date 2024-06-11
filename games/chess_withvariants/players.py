@@ -48,7 +48,7 @@ class ChessPlayer(Player):
             message += str(self.board) + '\n'
         else:
             result = self.engine.play(self.board, chess.engine.Limit(time=0.1))
-            self.board.push(result.move)
+            #self.board.push(result.move)
             message +=  str(result.move) #+ '\n'
         # return a string whose first and last tokens start with the next letter     
         return message

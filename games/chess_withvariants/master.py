@@ -10,6 +10,9 @@ import time
 
 logger = get_logger(__name__)
 
+import re
+
+
 
 class Chess(GameMaster):
     """A game of chess between two players  
@@ -132,33 +135,12 @@ class Chess(GameMaster):
             self.black.history.append({'role': role, 'content': utterance})
 
     @staticmethod
-    def parse(utterance: str) -> Tuple[str, str]:
+    def parse(utterance: str) -> bool:
         """Check if the utterance is valid and return move,check(or checkmate)."""
-        #print(utterance)
-        if len(utterance) < 4:
-            return None,None
-        first_row = 'a'
-        last_row = chr(ord(first_row) + 7)
-        first_col='1'
-        last_col = chr(ord(first_col) + 7)
-        #Check for nonsensical moves 
-        if   utterance[0] < first_row  or utterance[0] >last_row:
-            return None,None
-        if   utterance[2] < first_row  or utterance[2] >last_row:
-            return None,None
-        if   utterance[1] < first_col  or utterance[1] >last_col:
-            return None,None
-        if   utterance[3] < first_col  or utterance[3] >last_col:
-            return None,None
-        move =  utterance[0:3] 
-        if  len(utterance) not in [10,14]:
-            return None,None
-        if len(utterance) == 10 and utterance[4:] == " check":
-            return move,"check"
-        if len(utterance) == 14 and utterance[4:] == " checkmate":
-            return move,"checkmate"
 
-        return None,None
+        #pattern_move = r'\b[a-h][1-8][a-h][1-8][nbrqNBRQ]?(\+|#)?\b'
+        pattern = r'\b[a-h][1-8][a-h][1-8][nbrqNBRQ]?\b'
+        return re.fullmatch(pattern, utterance) is not None
 
     def _get_utterance(self, player: str) -> str:
         """Get utterance from a player and log it (firstlast specific)."""
@@ -205,7 +187,6 @@ class Chess(GameMaster):
         
         # get next player reply and add it to its history
         next_move = self._get_utterance(next_player)
-        print(f'NEXTMOVE {next_move}')
         
         # add A's reply to B's history
         self._append_utterance(next_move,next_player,'user')
@@ -213,20 +194,20 @@ class Chess(GameMaster):
         # also add the reply to the transcript
         action = {'type': 'send message', 'content': next_move}
         self.log_event(from_='GM', to=last_player, action=action)
-        move,check = self.parse(next_move)
+        self.parse(next_move)
        
-        print(move)
-        print(check)
-        if move is None:
+        if not self.parse(next_move):
             print('MOVE IS NONE!!!!!')
             return  None
         print(f'move {next_move}') 
         print(f'self.board\n{self.board}')
-        self.board.push(chess.Move.from_uci(move))
+        self.board.push(chess.Move.from_uci(next_move))
         print(f'self.board\n{self.board}')
 
         # check if the game should be aborted or lost
-        if not board.is_valid():
+        if not self.board.is_valid():
+       
+           
             # stop game
             return None
 
