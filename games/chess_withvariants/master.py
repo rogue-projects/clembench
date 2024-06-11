@@ -6,6 +6,7 @@ import random,copy
 from games.chess_withvariants.utils.board_functions import *
 from games.chess_withvariants.instancegenerator import GAME_NAME
 from games.chess_withvariants.players import ChessPlayer
+import time
 
 logger = get_logger(__name__)
 
@@ -69,9 +70,6 @@ class Chess(GameMaster):
         # the value user means the message is from an interlocutor of the model
         prompt_w = initial_prompt + f"\n You're playing white."
         prompt_b = initial_prompt + f"\n You're playing black."
-        if str(self.white_model) == str('programmatic'):
-            move = self._get_utterance('w')
-            prompt_b +=  f"\n First move from white was {move}."
 
         self.white.history.append({'role': 'user', 'content': prompt_w})
         self.black.history.append({'role': 'user', 'content': prompt_b})
@@ -184,7 +182,8 @@ class Chess(GameMaster):
 
     def turn(self) -> None:
         """Perform a game turn, a single utterance by black or white."""
-        #print('-----TURN-----')
+        time.sleep(1)
+        print('-----TURN-----')
         try:
             last_move =  self.board.peek()
             print(f'LASTMOVE {last_move}')
@@ -196,6 +195,10 @@ class Chess(GameMaster):
         except:
             cur_player = 'b'
             next_player = 'w'
+        
+        #if str(self.white_model) == str('programmatic'):
+        #    move = self._get_utterance('w')
+        #    prompt_b +=  f"\n First move from white was {move}."
         
         # get next player reply and add it to its history
         next_move = self._get_utterance(next_player)
