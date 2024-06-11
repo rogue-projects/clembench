@@ -176,6 +176,10 @@ class Chess(GameMaster):
         # add reply to its own memory
         self._append_utterance(answer, player, 'assistant')
 
+        if self.current_turn ==1:
+        #A bit of prompt magic, adding initial white move to the history of black prompt
+            self.black.history[-1]['content'] += f'\n{answer}'
+
         # increase the number of API requests 
         self.request_counts[self.current_turn] += 1
         return answer
@@ -196,7 +200,7 @@ class Chess(GameMaster):
         
         #print(f'LASTMOVE {type(last_move)}')
         #print(f'SQUARE {last_move.to_square}')
-        print(f'self.board\n{self.board}')
+        #print(f'self.board\n{self.board}')
         
         
         # get next player reply and add it to its history
@@ -210,11 +214,16 @@ class Chess(GameMaster):
         action = {'type': 'send message', 'content': next_move}
         self.log_event(from_='GM', to=last_player, action=action)
         move,check = self.parse(next_move)
-        
+       
+        print(move)
+        print(check)
         if move is None:
+            print('MOVE IS NONE!!!!!')
             return  None
-        #print(f'move {next_move}') 
+        print(f'move {next_move}') 
+        print(f'self.board\n{self.board}')
         self.board.push(chess.Move.from_uci(move))
+        print(f'self.board\n{self.board}')
 
         # check if the game should be aborted or lost
         if not board.is_valid():
@@ -222,7 +231,6 @@ class Chess(GameMaster):
             return None
 
         self.complete_turns += 1
-
 
 
 
