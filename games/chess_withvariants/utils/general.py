@@ -10,7 +10,7 @@ def get_path_file():
 
 #We will load the binary here
 def get_path_stockfish_bin():
-    return os.path.join(get_path_file(), "resources","stockfish-ubuntu-x86-64-avx2" )
+    return os.path.join(get_path_file(), "resources","stockfish-macos-x86-64" )
 
 
 def download_stockfish():
