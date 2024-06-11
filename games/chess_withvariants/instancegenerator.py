@@ -65,25 +65,27 @@ class ChessGameInstanceGenerator(GameInstanceGenerator):
         #prompt = string.Template(baseline_template).substitute(skill=skill, \
         #instance['initial_prompt'] = prompt
 
-        baseline_template = self.load_template('resources/default_prompt_baseline.template')
-        experiment = self.add_experiment('960')
-        instance = self.add_game_instance(experiment,0)
-        instance['board']= chess.Board.from_chess960_pos(random.randint(0, 959))
-        instance['n_turns']= 10
-        skill = 'expert'
-        prompt = string.Template(baseline_template).substitute(skill=skill, \
-                       board=str(instance['board']))
-        instance['initial_prompt'] = prompt
-
         ### GENERATING BASELINE
         baseline_template = self.load_template('resources/default_prompt_baseline.template')
         experiment = self.add_experiment('random16_figures')
         instance = self.add_game_instance(experiment,1)
         instance['board']= self.randomBoard()
+        #print("instance['board']")
+        #print(instance['board'])
         instance['n_turns']= 10
         skill = 'expert'
         prompt = string.Template(baseline_template).substitute(skill=skill, \
                        board=str(chess.Board(fen=instance['board'])))
+        instance['initial_prompt'] = prompt
+
+        baseline_template = self.load_template('resources/default_prompt_baseline.template')
+        experiment = self.add_experiment('960')
+        instance = self.add_game_instance(experiment,0)
+        instance['board']= chess.Board.from_chess960_pos(random.randint(0, 959)).fen().split(' ')[0]
+        instance['n_turns']= 10
+        skill = 'expert'
+        prompt = string.Template(baseline_template).substitute(skill=skill, \
+                       board=str(instance['board']))
         instance['initial_prompt'] = prompt
 
         
