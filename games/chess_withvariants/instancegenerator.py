@@ -70,7 +70,7 @@ class ChessGameInstanceGenerator(GameInstanceGenerator):
         baseline_template = self.load_template('resources/default_prompt_baseline.template')
         experiment = self.add_experiment('random16_figures')
         instance = self.add_game_instance(experiment,1)
-        instance['board']= self.randomBoard()
+        instance['board']= self.randomBoard(piece_amount=24)
         instance['n_turns']= 10
         skill = 'expert'
         prompt = string.Template(baseline_template).substitute(skill=skill, \
@@ -78,7 +78,27 @@ class ChessGameInstanceGenerator(GameInstanceGenerator):
         instance['initial_prompt'] = prompt
 
         
+        ### GENERATING BASELINE
+        baseline_template = self.load_template('resources/default_prompt_baseline.template')
+        experiment = self.add_experiment('random24_figures')
+        instance = self.add_game_instance(experiment,1)
+        instance['board']= self.randomBoard()
+        instance['n_turns']= 10
+        skill = 'expert'
+        prompt = string.Template(baseline_template).substitute(skill=skill, \
+                       board=str(chess.Board(fen=instance['board'])))
+        instance['initial_prompt'] = prompt
 
+        ### GENERATING BASELINE
+        baseline_template = self.load_template('resources/default_prompt_baseline.template')
+        experiment = self.add_experiment('random20_figures')
+        instance = self.add_game_instance(experiment,1)
+        instance['board']= self.randomBoard(piece_amount=20)
+        instance['n_turns']= 10
+        skill = 'expert'
+        prompt = string.Template(baseline_template).substitute(skill=skill, \
+                       board=str(chess.Board(fen=instance['board'])))
+        instance['initial_prompt'] = prompt
     ##TODO: TEST
    
     ###UNTESTED FUNCTION
@@ -125,8 +145,8 @@ class ChessGameInstanceGenerator(GameInstanceGenerator):
             raise 'Too many pieces!!'
         i = 0
         while not self.evaluateBoardFair(board): 
-            print(f"attempt #{i} to generate a random board")
-            print(chess.Board(matrix_to_fen(board)))
+            #print(f"attempt #{i} to generate a random board")
+            #print(chess.Board(matrix_to_fen(board)))
             i+=1
             board =  [[None]*boardL for _ in range(boardL)]
             board[0][random.randint(0,boardL-1)]='k' 
