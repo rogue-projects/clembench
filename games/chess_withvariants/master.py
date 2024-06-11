@@ -69,7 +69,7 @@ class Chess(GameMaster):
         # append the initial message of each player to their history
         # the value user means the message is from an interlocutor of the model
         prompt_w = initial_prompt + f"\n You're playing white."
-        prompt_b = initial_prompt + f"\n You're playing black."
+        prompt_b = initial_prompt + f"\n You're playing black. The first move from white is:\n"
 
         self.white.history.append({'role': 'user', 'content': prompt_w})
         self.black.history.append({'role': 'user', 'content': prompt_b})
@@ -99,6 +99,7 @@ class Chess(GameMaster):
             self.current_turn += 1
             # always call log_next_turn when a new turn starts
             self.log_next_turn()
+            print(f'------STARTING TURN {self.current_turn}-------')
             self.turn()
         
         if self.complete_turns == self.n_turns:
@@ -182,23 +183,21 @@ class Chess(GameMaster):
 
     def turn(self) -> None:
         """Perform a game turn, a single utterance by black or white."""
-        time.sleep(1)
+        #time.sleep(1)
         print('-----TURN-----')
-        try:
+        next_player = 'w'
+        last_player = 'b'
+        if (self.current_turn != 1):
             last_move =  self.board.peek()
-            print(f'LASTMOVE {last_move}')
-            #print(f'LASTMOVE {type(last_move)}')
-            #print(f'SQUARE {last_move.to_square}')
-            print(f'self.board\n{self.board}')
-            cur_player ='b' if chess.BLACK==self.board.color_at(last_move.to_square) else 'w'
-            next_player = 'b' if cur_player=='w' else 'w'
-        except:
-            cur_player = 'b'
-            next_player = 'w'
+            #print(f'LASTMOVE {last_move}')
+            last_player ='b' if chess.BLACK==self.board.color_at(last_move.to_square) else 'w'
+            next_player = 'b' if last_player=='w' else 'w'
         
-        #if str(self.white_model) == str('programmatic'):
-        #    move = self._get_utterance('w')
-        #    prompt_b +=  f"\n First move from white was {move}."
+        
+        #print(f'LASTMOVE {type(last_move)}')
+        #print(f'SQUARE {last_move.to_square}')
+        print(f'self.board\n{self.board}')
+        
         
         # get next player reply and add it to its history
         next_move = self._get_utterance(next_player)
@@ -209,7 +208,7 @@ class Chess(GameMaster):
         
         # also add the reply to the transcript
         action = {'type': 'send message', 'content': next_move}
-        self.log_event(from_='GM', to=cur_player, action=action)
+        self.log_event(from_='GM', to=last_player, action=action)
         move,check = self.parse(next_move)
         
         if move is None:
