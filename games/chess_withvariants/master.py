@@ -142,7 +142,7 @@ class Chess(GameMaster):
         pattern = re.compile(r'\b[a-h][1-8][a-h][1-8][nbrqNBRQ]?\b')
         print(f'utterance:{utterance}')
         print(f'pattern_match:{pattern.fullmatch(utterance) is None}')
-        return pattern.fullmatch(utterance) is not None
+        return not(pattern.fullmatch(utterance) is None)
 
     def _get_utterance(self, player: str) -> str:
         """Get utterance from a player and log it (firstlast specific)."""
@@ -152,6 +152,7 @@ class Chess(GameMaster):
             player_class = self.white
         else :
             player_class  = self.black
+        print(player)
         prompt, raw_answer, answer = player_class(player_class.history,self.current_turn)
         # add API call to the records
         action = {'type': 'get message', 'content': answer}
@@ -206,10 +207,13 @@ class Chess(GameMaster):
         self.board.push(chess.Move.from_uci(next_move))
         print(f'self.board\n{self.board}')
 
+
         # check if the game should be aborted or lost
         if not self.board.is_valid():
        
-           
+            self.lose = True
+            action = {'type', 'parse', 'content' : f'{next_move} violates rules'} 
+            self.log_event(from_='GM', to='GM', action=action)
             # stop game
             return None
 
