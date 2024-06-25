@@ -196,13 +196,12 @@ class Chess(GameMaster):
         # get next player reply and add it to its history
         next_move = self._get_utterance(next_player)
         
-        # add A's reply to B's history
-        self._append_utterance(next_move,last_player,'user')
-        if self.current_turn!=0:
-
-        # also add the reply to the transcript
+        
+        if self.current_turn!=1:
+            # add A's reply to B's history
+            self._append_utterance(next_move,last_player,'user')
+            # also add the reply to the transcript
             action = {'type': 'send message', 'content': next_move}
-
             self.log_event(from_='GM', to=last_player, action=action)
         #self.parse(next_move)
        
