@@ -80,8 +80,6 @@ class Chess(GameMaster):
         # also log the messages as events for the transcriptions
         action = {'type': 'send message', 'content': prompt_w}
         self.log_event(from_='GM', to='w', action=action)
-        action = {'type': 'send message', 'content': prompt_b}
-        self.log_event(from_='GM', to='b', action=action)
     
 
     def log_eval_assets(self) -> None:
@@ -164,6 +162,8 @@ class Chess(GameMaster):
         if self.current_turn ==1:
         #A bit of prompt magic, adding initial white move to the history of black prompt
             self.black.history[-1]['content'] += f'\n{answer}'
+            action = {'type': 'send message', 'content': self.black.history[-1]['content']}
+            self.log_event(from_='GM', to='b', action=action)
 
         # increase the number of API requests 
         self.request_counts[self.current_turn] += 1
