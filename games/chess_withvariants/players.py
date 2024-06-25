@@ -35,22 +35,13 @@ class ChessPlayer(Player):
 
     def _custom_response(self, messages, turn_idx) -> str:
         """Return a message with the next move(message) iff we are using a bot model."""
-        if (str(self.model_name) != str(DEFAULT_AI)):
-            print(self.model_name)
-            print(DEFAULT_AI)
-            print(self.model_name != DEFAULT_AI)
-            print(self.model_name == DEFAULT_AI)
-            raise Exception(f'Requesting bot response from model: expected:"{DEFAULT_AI}"; received:"{self.model_name}"' )
-        message = "" 
-        if (turn_idx == 0 and self.player == 'w'):
-            #We should print the board    
-            message += "Board:\n"
-            message += str(self.board) + '\n'
-        else:
-            result = self.engine.play(self.board, chess.engine.Limit(time=0.1))
-            #self.board.push(result.move)
-            message +=  str(result.move) #+ '\n'
-        # return a string whose first and last tokens start with the next letter     
-        return message
+        #if (str(self.model_name) != str(DEFAULT_AI)):
+        #    print(self.model_name)
+        #    print(DEFAULT_AI)
+        #    print(self.model_name != DEFAULT_AI)
+        #    print(self.model_name == DEFAULT_AI)
+        #    raise Exception(f'Requesting bot response from model: expected:"{DEFAULT_AI}"; received:"{self.model_name}"' )
+        message = self.engine.play(self.board, chess.engine.Limit(time=0.1))      # return message
+        return str(message.move)
 
 

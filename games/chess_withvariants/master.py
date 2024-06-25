@@ -139,8 +139,10 @@ class Chess(GameMaster):
         """Check if the utterance is valid and return move,check(or checkmate)."""
 
         #pattern_move = r'\b[a-h][1-8][a-h][1-8][nbrqNBRQ]?(\+|#)?\b'
-        pattern = r'\b[a-h][1-8][a-h][1-8][nbrqNBRQ]?\b'
-        return re.fullmatch(pattern, utterance) is not None
+        pattern = re.compile(r'\b[a-h][1-8][a-h][1-8][nbrqNBRQ]?\b')
+        print(f'utterance:{utterance}')
+        print(f'pattern_match:{pattern.fullmatch(utterance) is None}')
+        return pattern.fullmatch(utterance) is not None
 
     def _get_utterance(self, player: str) -> str:
         """Get utterance from a player and log it (firstlast specific)."""
@@ -189,12 +191,12 @@ class Chess(GameMaster):
         next_move = self._get_utterance(next_player)
         
         # add A's reply to B's history
-        self._append_utterance(next_move,next_player,'user')
+        self._append_utterance(next_move,last_player,'user')
         
         # also add the reply to the transcript
         action = {'type': 'send message', 'content': next_move}
         self.log_event(from_='GM', to=last_player, action=action)
-        self.parse(next_move)
+        #self.parse(next_move)
        
         if not self.parse(next_move):
             print('MOVE IS NONE!!!!!')
