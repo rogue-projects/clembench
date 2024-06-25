@@ -212,7 +212,7 @@ class Chess(GameMaster):
         if not self.board.is_valid():
        
             self.lose = True
-            action = {'type', 'parse', 'content' : f'{next_move} violates rules'} 
+            action = {'type': 'parse', 'content' : f'{next_move} violates rules'} 
             self.log_event(from_='GM', to='GM', action=action)
             # stop game
             return None
