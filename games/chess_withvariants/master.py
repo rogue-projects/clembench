@@ -96,24 +96,29 @@ class Chess(GameMaster):
     def play(self) -> None:
         """Play the game until the end (mandatory)."""
         # play the game
+        print('------proceed-------')
+
         while self.proceed():
             self.current_turn += 1
             # always call log_next_turn when a new turn starts
             self.log_next_turn()
             print(f'------STARTING TURN {self.current_turn}-------')
             self.turn()
-        
+        print('game ends?')
         if self.complete_turns == self.n_turns:
+            print('game ends')
             # log a message informing that the game was successfuly played
             action = {'type': 'info', 'content': 'game successful'}
             self.log_event(from_='GM', to='GM', action=action)
 
         # log a final message saying that the game did came to an end
         action = {'type': 'info', 'content': 'end game'}
+        print('game really ending')
         self.log_event(from_='GM', to='GM', action=action)
         # log all temporary game variables that are needed for evaluation
+        print('game already ended')
         self.log_eval_assets()
-
+        print('youre still here? ')
 
 
 
@@ -193,10 +198,12 @@ class Chess(GameMaster):
         
         # add A's reply to B's history
         self._append_utterance(next_move,last_player,'user')
-        
+        if self.current_turn!=1:
+
         # also add the reply to the transcript
-        action = {'type': 'send message', 'content': next_move}
-        self.log_event(from_='GM', to=last_player, action=action)
+            action = {'type': 'send message', 'content': next_move}
+
+            self.log_event(from_='GM', to=last_player, action=action)
         #self.parse(next_move)
        
         if not self.parse(next_move):
