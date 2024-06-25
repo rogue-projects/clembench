@@ -198,7 +198,7 @@ class Chess(GameMaster):
         
         # add A's reply to B's history
         self._append_utterance(next_move,last_player,'user')
-        if self.current_turn!=2:
+        if self.current_turn!=0:
 
         # also add the reply to the transcript
             action = {'type': 'send message', 'content': next_move}
