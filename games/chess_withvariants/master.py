@@ -1,4 +1,4 @@
-from clemgame.clemgame import GameMaster, GameBenchmark
+from clemgame.clemgame import GameMaster, GameBenchmark, GameScorer
 from typing import List, Dict, Tuple
 from clemgame import get_logger
 import clemgame.metrics as ms
@@ -22,7 +22,8 @@ class Chess(GameMaster):
     def __init__(self, experiment: Dict, player_backends: List[str]): 
         super().__init__(GAME_NAME, experiment, player_backends)
         # save experiment and player attributes that will be necessary later
-        self.name = experiment['name']
+        self.name = GAME_NAME
+        self.topic = experiment['name']
         self.white_model = player_backends[0]
         self.black_model = player_backends[1]
         self.max_prompt_retries = 3#7
@@ -201,10 +202,6 @@ class Chess(GameMaster):
             next_player = 'b' if last_player=='w' else 'w'
         
         
-        #print(f'LASTMOVE {type(last_move)}')
-        #print(f'SQUARE {last_move.to_square}')
-        #print(f'self.board\n{self.board}')
-
         # get next player reply and add it to its history
         next_move = self._get_utterance(next_player)
         
@@ -306,6 +303,80 @@ class Chess(GameMaster):
         self.log_episode_score(ms.BENCH_SCORE, bench_score)
 
 
+class ChessGameScorer(GameScorer):
+
+    def __init__(self, name: str, experiment: Dict, game_instance: Dict):
+        super().__init__(name, experiment,game_instance)
+        self.experiment = experiment
+        self.game_instance = game_instance
+        """ Stores values of score computation """
+        self.scores = {
+            "turn scores": {},
+            "episode scores": {},
+        }
+
+    def store_scores(self, results_root: str, dialogue_pair: str, game_record_dir: str):
+        self.store_results_file(self.scores, "scores.json",
+                                dialogue_pair=dialogue_pair,
+                                sub_dir=game_record_dir,
+                                root_dir=results_root)
+
+    def log_turn_score(self, turn_idx, score_name, score_value):
+        if isinstance(score_value, bool):
+            self.logger.warning(f"{self.name}: Score {score_name} value is boolean, this can break the eval!")
+        if turn_idx not in self.scores["turn scores"]:
+            self.scores["turn scores"][turn_idx] = {}
+        if score_name in self.scores["turn scores"][turn_idx]:
+            self.logger.warning(f"{self.name}: Score {score_name} overwritten at turn {turn_idx}!")
+        self.scores["turn scores"][turn_idx][score_name] = score_value
+        self.logger.info(f"{self.name}: Logged turn {turn_idx} score {score_name}={score_value}.")
+
+    def log_episode_score(self, score_name, score_value):
+        if score_name in self.scores["episode scores"]:
+            self.logger.warning(f"{self.name}: Episode score {score_name} overwritten!")
+        self.scores["episode scores"][score_name] = score_value
+        self.logger.info(f"{self.name}: Logged episode score {score_name}={score_value}.")
+
+    def compute_scores(self, episode_interactions: Dict) -> None:
+        self.score_turns(episode_interactions)
+        self.score_game(episode_interactions)
+
+    def score_turns(self, episode_interactions: Dict) -> None:
+        # Loop over turns, calculate and log turn-specific scores
+        # TODO: implement this scoring
+        return [1,2,3]
+
+    def score_game(self, episode_interactions: Dict) -> None:
+        self.score_game_end(episode_interactions)
+        self.score_requests(episode_interactions)
+        self.log_main_score(episode_interactions)
+
+    def score_game_end(self, episode_interactions: Dict) -> None:
+        aborted = int(episode_interactions[ms.METRIC_ABORTED])
+        lose = int(episode_interactions[ms.METRIC_LOSE]) if not aborted else 0
+        success = 1 - lose if not aborted else 0
+
+        self.log_episode_score(ms.METRIC_ABORTED, aborted)
+        self.log_episode_score(ms.METRIC_LOSE, lose)
+        self.log_episode_score(ms.METRIC_SUCCESS, success)
+
+    def score_requests(self, episode_interactions: Dict):
+        # logging total request count, parsed, violated, and success ratio of parsed requests over all requests
+        request_count = episode_interactions[
+            ms.METRIC_REQUEST_COUNT]  # could also be calculated by adding parsed and violated requests
+        parsed_requests = episode_interactions[ms.METRIC_REQUEST_COUNT_PARSED]
+        violated_requests = episode_interactions[ms.METRIC_REQUEST_COUNT_VIOLATED]
+
+        self.log_episode_score(ms.METRIC_REQUEST_COUNT, request_count)
+        self.log_episode_score(ms.METRIC_REQUEST_COUNT_PARSED, parsed_requests)
+        self.log_episode_score(ms.METRIC_REQUEST_COUNT_VIOLATED, violated_requests)
+        self.log_episode_score(ms.METRIC_REQUEST_SUCCESS, parsed_requests / request_count)
+
+    def log_main_score(self, episode_interactions: Dict):
+        # Replace this function call with a function that logs your main score aka BENCH_SCORE
+        # TODO: implement this logging 
+        return [1,2,3]
+
 
 
 class ChessBenchmark(GameBenchmark):
@@ -319,7 +390,7 @@ class ChessBenchmark(GameBenchmark):
 
     # add a description of your game
     def get_description(self):
-        return "A simple game in which utterances must follow alphabetical rules."
+        return "Normal chess combined with randomized amount and position of figures."
 
     # copy this, replacing the name of the game master in the return statement
     def create_game_master(self,
@@ -328,6 +399,8 @@ class ChessBenchmark(GameBenchmark):
                            ) -> Chess:
         return Chess(experiment, player_backends)
 
+    def create_game_scorer(self, experiment: Dict, game_instance: Dict) -> GameScorer:
+        return ChessGameScorer(GAME_NAME,experiment=experiment, game_instance=game_instance)
 
 
 
