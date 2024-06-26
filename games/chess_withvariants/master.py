@@ -31,7 +31,8 @@ class Chess(GameMaster):
 
         # initialise attributes that will be used for the evaluation scores
         self.aborted: bool = False
-        self.lose: bool = False
+        self.checkmate: bool = False
+        self.stalemate: bool = False
         self.complete_turns: int = 0
 
     def setup(self, game_id: int, board: str, n_turns: int, initial_prompt: str) -> None:
@@ -90,7 +91,8 @@ class Chess(GameMaster):
         self.log_key('Played turns', self.current_turn)
         self.log_key('Complete turns', self.complete_turns)
         self.log_key(ms.METRIC_ABORTED, self.aborted)
-        self.log_key(ms.METRIC_LOSE, self.lose)
+        self.log_key(ms.METRIC_CHECKMATE, self.checkmate)
+        self.log_key(ms.METRIC_STALEMATE, self.stalemate)
         self.log_key(ms.METRIC_REQUEST_COUNT, self.request_counts)
         self.log_key(ms.METRIC_REQUEST_COUNT_PARSED, self.parsed_request_counts)
         self.log_key(ms.METRIC_REQUEST_COUNT_VIOLATED, self.violated_request_counts)
@@ -130,7 +132,8 @@ class Chess(GameMaster):
         """Check if the game loop should continue (firstlast specific)."""
         return (self.current_turn < self.n_turns
                 and not self.aborted
-                and not self.lose)
+                and not self.checkmate
+                and not self.stalemate)
 
     def _append_utterance(self, utterance: str, player: str, role: str) -> None:
         """Add an utterance to the history of a player """
@@ -217,7 +220,7 @@ class Chess(GameMaster):
             print('------ REPROMPTING---------')
             retries += 1 
             if retries >=  self.max_prompt_retries:
-                self.lose = True
+                self.aborted = True
                 action = {'type': 'parse', 'content' : f'Ran out of reprompting attempts'} 
                 self.log_event(from_='GM', to='GM', action=action)
                 return None
@@ -236,6 +239,9 @@ class Chess(GameMaster):
                 next_move = self._get_utterance(next_player,validity_error=True)
             self.board.push(chess.Move.from_uci(next_move))
 
+
+        
+
         
         # add A's reply to B's 
         # also add the reply to the transcript
@@ -250,6 +256,14 @@ class Chess(GameMaster):
             self.log_event(from_='GM', to=last_player, action=action)
 
         self.complete_turns += 1
+        if self.board.is_checkmate():
+            self.checkmate = True
+            return None
+        if self.board.is_stalemate():
+            self.stalemate = True
+            return None
+
+    
 
 
 
