@@ -90,6 +90,8 @@ class Chess(GameMaster):
         """Aux to log variables needed for scoring (firstlast specific)"""
         self.log_key('Played turns', self.current_turn)
         self.log_key('Complete turns', self.complete_turns)
+        self.log_key("Parse errors", self.parse_errors)
+        self.log_key("Validity errors", self.validity_errors)
         self.log_key(ms.METRIC_ABORTED, self.aborted)
         self.log_key(ms.METRIC_CHECKMATE, self.checkmate)
         self.log_key(ms.METRIC_STALEMATE, self.stalemate)
@@ -271,6 +273,8 @@ class Chess(GameMaster):
         """Compute episode-level and turn-level scores (mandatory)."""
         played_turns = episode_interactions['Played turns']
         complete_turns = episode_interactions['Complete turns']
+        parse_errors = episode_interactions['Parse errors']
+        validity_errors = episode_interactions['Validity errors']
         # turn 0 was only the initial prompts, so we disregard it here
         reqs = episode_interactions[ms.METRIC_REQUEST_COUNT][1:]
         p_reqs = episode_interactions[ms.METRIC_REQUEST_COUNT_PARSED][1:]
@@ -283,12 +287,15 @@ class Chess(GameMaster):
             self.log_turn_score(turn, ms.METRIC_REQUEST_COUNT_VIOLATED, v_reqs[turn])
 
         aborted = int(episode_interactions[ms.METRIC_ABORTED])
-        lose = int(episode_interactions[ms.METRIC_LOSE]) if not aborted else 0
+        
+        checkmate = int(episode_interactions[ms.METRIC_CHECKMATE]) if not aborted else 0
+        stalemate = int(episode_interactions[ms.METRIC_STALEMATE]) if not aborted else 0
         success =  1 - lose if not aborted else 0
         bench_score = complete_turns / n_turns if not aborted else np.nan
         
         self.log_episode_score(ms.METRIC_ABORTED, aborted)
-        self.log_episode_score(ms.METRIC_LOSE, lose)
+        self.log_episode_score(ms.METRIC_CHECKMATE, checkmate)
+        self.log_episode_score(ms.METRIC_STALEMATE, stalemate)
         self.log_episode_score(ms.METRIC_SUCCESS, success)
         self.log_episode_score(ms.METRIC_REQUEST_COUNT, sum(reqs))
         self.log_episode_score(ms.METRIC_REQUEST_COUNT_PARSED, sum(p_reqs))
