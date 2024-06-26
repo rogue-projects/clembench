@@ -287,7 +287,6 @@ class Chess(GameMaster):
             self.log_turn_score(turn, ms.METRIC_REQUEST_COUNT_VIOLATED, v_reqs[turn])
 
         aborted = int(episode_interactions[ms.METRIC_ABORTED])
-        
         checkmate = int(episode_interactions[ms.METRIC_CHECKMATE]) if not aborted else 0
         stalemate = int(episode_interactions[ms.METRIC_STALEMATE]) if not aborted else 0
         success =  1 - lose if not aborted else 0
