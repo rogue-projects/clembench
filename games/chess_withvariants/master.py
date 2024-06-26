@@ -56,6 +56,7 @@ class Chess(GameMaster):
         self.request_counts = [0] * (n_turns + 1)
         self.parsed_request_counts = [0] * (n_turns + 1)
         self.violated_request_counts = [0] * (n_turns + 1)
+        self.retries = 0
 
         # add initial prompts to each player's messages
         self.initiate(initial_prompt)
@@ -149,8 +150,6 @@ class Chess(GameMaster):
 
         #pattern_move = r'\b[a-h][1-8][a-h][1-8][nbrqNBRQ]?(\+|#)?\b'
         pattern = re.compile(r'\b[a-h][1-8][a-h][1-8][nbrqNBRQ]?\b')
-        print(f'utterance:{utterance}')
-        print(f'pattern_match:{pattern.fullmatch(utterance) is None}')
         return not(pattern.fullmatch(utterance) is None)
 
     def _get_utterance(self, player: str, parse_error=False, validity_error=False) -> str:
@@ -211,13 +210,12 @@ class Chess(GameMaster):
         if self.parse(next_move):
             self.board.push(chess.Move.from_uci(next_move))
 
-        retries = 0 # We may have to reprompt
         
         # Check for parseability
         while  (not self.parse(next_move) \
-                or not self.board.is_valid()) :
-            retries += 1 
-            if retries >=  self.max_prompt_retries:
+                or not chess.Move.from_uci(next_move) in self.board.legal_moves) :
+            self.retries += 1 
+            if self.retries >=  self.max_prompt_retries:
                 self.aborted = True
                 action = {'type': 'parse', 'content' : f'Ran out of reprompting attempts'} 
                 self.log_event(from_='GM', to='GM', action=action)
@@ -229,13 +227,12 @@ class Chess(GameMaster):
                 next_move = self._get_utterance(next_player,parse_error=True)
                 if not self.parse(next_move):
                     continue
-            elif not self.board.is_valid():
+            elif not chess.Move.from_uci(next_move) in self.board.legal_moves :
                 self.validity_errors += 1
                 action = {'type': 'parse', 'content' : f'"{next_move}" violates movement rules'} 
                 self.log_event(from_='GM', to='GM', action=action)
-                self.board.pop()
                 next_move = self._get_utterance(next_player,validity_error=True)
-            self.board.push(chess.Move.from_uci(next_move))
+        self.board.push(chess.Move.from_uci(next_move))
 
 
         
