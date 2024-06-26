@@ -33,6 +33,8 @@ class Chess(GameMaster):
         self.aborted: bool = False
         self.checkmate: bool = False
         self.stalemate: bool = False
+        self.winner: str = '' 
+        self.winner_model: str = ''
         self.complete_turns: int = 0
 
     def setup(self, game_id: int, board: str, n_turns: int, initial_prompt: str) -> None:
@@ -93,8 +95,10 @@ class Chess(GameMaster):
         self.log_key("Parse errors", self.parse_errors)
         self.log_key("Validity errors", self.validity_errors)
         self.log_key(ms.METRIC_ABORTED, self.aborted)
-        self.log_key(ms.METRIC_CHECKMATE, self.checkmate)
-        self.log_key(ms.METRIC_STALEMATE, self.stalemate)
+        self.log_key("Winner", self.winner)
+        self.log_key("Winner model", self.winner_model)
+        self.log_key("Checkmate", self.checkmate)
+        self.log_key("Stalemate", self.stalemate)
         self.log_key(ms.METRIC_REQUEST_COUNT, self.request_counts)
         self.log_key(ms.METRIC_REQUEST_COUNT_PARSED, self.parsed_request_counts)
         self.log_key(ms.METRIC_REQUEST_COUNT_VIOLATED, self.violated_request_counts)
@@ -103,7 +107,6 @@ class Chess(GameMaster):
     def play(self) -> None:
         """Play the game until the end (mandatory)."""
         # play the game
-        print('------proceed-------')
 
         while self.proceed():
             self.current_turn += 1
@@ -111,21 +114,16 @@ class Chess(GameMaster):
             self.log_next_turn()
             print(f'------STARTING TURN {self.current_turn}-------')
             self.turn()
-        print('game ends?')
         if self.complete_turns == self.n_turns:
-            print('game ends')
             # log a message informing that the game was successfuly played
             action = {'type': 'info', 'content': 'game successful'}
             self.log_event(from_='GM', to='GM', action=action)
 
         # log a final message saying that the game did came to an end
         action = {'type': 'info', 'content': 'end game'}
-        print('game really ending')
         self.log_event(from_='GM', to='GM', action=action)
         # log all temporary game variables that are needed for evaluation
-        print('game already ended')
         self.log_eval_assets()
-        print('youre still here? ')
 
 
 
@@ -195,7 +193,6 @@ class Chess(GameMaster):
     def turn(self) -> None:
         """Perform a game turn, a single utterance by black or white."""
         #time.sleep(1)
-        print('-----TURN-----')
         next_player = 'w'
         last_player = 'b'
         if (self.current_turn != 1):
@@ -219,7 +216,6 @@ class Chess(GameMaster):
         # Check for parseability
         while  (not self.parse(next_move) \
                 or not self.board.is_valid()) :
-            print('------ REPROMPTING---------')
             retries += 1 
             if retries >=  self.max_prompt_retries:
                 self.aborted = True
@@ -243,8 +239,6 @@ class Chess(GameMaster):
 
 
         
-
-        
         # add A's reply to B's 
         # also add the reply to the transcript
         if self.current_turn ==1:
@@ -260,12 +254,20 @@ class Chess(GameMaster):
         self.complete_turns += 1
         if self.board.is_checkmate():
             self.checkmate = True
+            if self.board.outcome().winner == chess.BLACK:
+                self.winner = 'b'
+                self.winner_model = self.black_model
+            else:
+                self.winner = 'w'
+                self.winner_model = self.white_model
             return None
         if self.board.is_stalemate():
             self.stalemate = True
+            self.winner = 'draw'
             return None
 
-    
+
+
 
 
 
@@ -275,6 +277,8 @@ class Chess(GameMaster):
         complete_turns = episode_interactions['Complete turns']
         parse_errors = episode_interactions['Parse errors']
         validity_errors = episode_interactions['Validity errors']
+        winner = episode_interactions['Winner']
+        winner_model = episode_interactions['Winner model']
         # turn 0 was only the initial prompts, so we disregard it here
         reqs = episode_interactions[ms.METRIC_REQUEST_COUNT][1:]
         p_reqs = episode_interactions[ms.METRIC_REQUEST_COUNT_PARSED][1:]
@@ -286,15 +290,19 @@ class Chess(GameMaster):
             self.log_turn_score(turn, ms.METRIC_REQUEST_COUNT_PARSED, p_reqs[turn])
             self.log_turn_score(turn, ms.METRIC_REQUEST_COUNT_VIOLATED, v_reqs[turn])
 
+        
+
         aborted = int(episode_interactions[ms.METRIC_ABORTED])
-        checkmate = int(episode_interactions[ms.METRIC_CHECKMATE]) if not aborted else 0
-        stalemate = int(episode_interactions[ms.METRIC_STALEMATE]) if not aborted else 0
+        stalemate = int(episode_interactions["Stalemate"]) if not aborted else 0
+        checkmate = int(episode_interactions["Checkmate"]) if not aborted  and not stalemate else 0
         success =  1 - lose if not aborted else 0
         bench_score = complete_turns / n_turns if not aborted else np.nan
         
         self.log_episode_score(ms.METRIC_ABORTED, aborted)
-        self.log_episode_score(ms.METRIC_CHECKMATE, checkmate)
-        self.log_episode_score(ms.METRIC_STALEMATE, stalemate)
+        self.log_episode_score("Checkmate", checkmate)
+        self.log_episode_score("Stalemate", stalemate)
+        self.log_episode_score("Winner", winner)
+        self.log_episode_score("Winner model", winner_model)
         self.log_episode_score(ms.METRIC_SUCCESS, success)
         self.log_episode_score(ms.METRIC_REQUEST_COUNT, sum(reqs))
         self.log_episode_score(ms.METRIC_REQUEST_COUNT_PARSED, sum(p_reqs))
