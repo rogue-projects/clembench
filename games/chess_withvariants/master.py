@@ -25,6 +25,9 @@ class Chess(GameMaster):
         self.name = experiment['name']
         self.white_model = player_backends[0]
         self.black_model = player_backends[1]
+        self.max_prompt_retries = 7
+        self.parse_errors = 0
+        self.validity_errors = 0
 
         # initialise attributes that will be used for the evaluation scores
         self.aborted: bool = False
@@ -147,7 +150,7 @@ class Chess(GameMaster):
         print(f'pattern_match:{pattern.fullmatch(utterance) is None}')
         return not(pattern.fullmatch(utterance) is None)
 
-    def _get_utterance(self, player: str) -> str:
+    def _get_utterance(self, player: str, parse_error=False, validity_error=False) -> str:
         """Get utterance from a player and log it (firstlast specific)."""
         assert player in ('w', 'b')
         # make an API call (or get a programmatic response) from the player 
@@ -155,7 +158,22 @@ class Chess(GameMaster):
             player_class = self.white
         else :
             player_class  = self.black
-        print(player)
+        last_move = player_class.history[-1]['content']
+        
+        if  parse_error :
+            # Add a message to history from the GM to the player
+            msg = 'Your previous move was typed wrongly. Could you respond in the format "n3n4" to move the figure on position n3 to the position n4. Respond only with the next move.'
+            action = {'type': 'get message', 'content': msg}
+            self.log_event(from_='GM', to=player, action=action)
+            self._append_utterance(msg, player, 'user')
+        if  validity_error:
+            msg = f'Your previous move was an illegal move that does not conform to how the figure in position "{last_move[:3]}" moves.'
+            action = {'type': 'get message', 'content': msg}
+            self.log_event(from_='GM', to=player, action=action)
+            self._append_utterance(msg, player, 'user')
+
+
+
         prompt, raw_answer, answer = player_class(player_class.history,self.current_turn)
         # add API call to the records
         action = {'type': 'get message', 'content': answer}
@@ -163,12 +181,6 @@ class Chess(GameMaster):
                     call=(copy.deepcopy(prompt), raw_answer))
         # add reply to its own memory
         self._append_utterance(answer, player, 'assistant')
-
-        if self.current_turn ==1:
-        #A bit of prompt magic, adding initial white move to the history of black prompt
-            self.black.history[-1]['content'] += f'\n{answer}'
-            action = {'type': 'send message', 'content': self.black.history[-1]['content']}
-            self.log_event(from_='GM', to='b', action=action)
 
         # increase the number of API requests 
         self.request_counts[self.current_turn] += 1
@@ -191,37 +203,51 @@ class Chess(GameMaster):
         #print(f'LASTMOVE {type(last_move)}')
         #print(f'SQUARE {last_move.to_square}')
         #print(f'self.board\n{self.board}')
-        
-        
+
         # get next player reply and add it to its history
         next_move = self._get_utterance(next_player)
+        if self.parse(next_move):
+            self.board.push(chess.Move.from_uci(next_move))
+
+        retries = 0 # We may have to reprompt
         
+        # Check for parseability
+        while  (not self.parse(next_move) \
+                or not self.board.is_valid()) :
+            print('------ REPROMPTING---------')
+            retries += 1 
+            if retries >=  self.max_prompt_retries:
+                self.lose = True
+                action = {'type': 'parse', 'content' : f'Ran out of reprompting attempts'} 
+                self.log_event(from_='GM', to='GM', action=action)
+                return None
+            if not self.parse(next_move):
+                self.parse_errors += 1
+                action = {'type': 'parse', 'content' : f'"{next_move}" does not parse.'} 
+                self.log_event(from_='GM', to='GM', action=action)
+                next_move = self._get_utterance(next_player,parse_error=True)
+                if not self.parse(next_move):
+                    continue
+            elif not self.board.is_valid():
+                self.validity_errors += 1
+                action = {'type': 'parse', 'content' : f'"{next_move}" violates movement rules'} 
+                self.log_event(from_='GM', to='GM', action=action)
+                self.board.pop()
+                next_move = self._get_utterance(next_player,validity_error=True)
+            self.board.push(chess.Move.from_uci(next_move))
+
         
-        if self.current_turn!=1:
-            # add A's reply to B's history
+        # add A's reply to B's 
+        # also add the reply to the transcript
+        if self.current_turn ==1:
+        #A bit of prompt magic, adding initial white move to the history of black prompt
+            self.black.history[-1]['content'] += f'\n{next_move}'
+            action = {'type': 'send message', 'content': self.black.history[-1]['content']}
+            self.log_event(from_='GM', to='b', action=action)
+        else :
             self._append_utterance(next_move,last_player,'user')
-            # also add the reply to the transcript
             action = {'type': 'send message', 'content': next_move}
             self.log_event(from_='GM', to=last_player, action=action)
-        #self.parse(next_move)
-       
-        if not self.parse(next_move):
-            print('MOVE IS NONE!!!!!')
-            return  None
-        print(f'move {next_move}') 
-        print(f'self.board\n{self.board}')
-        self.board.push(chess.Move.from_uci(next_move))
-        print(f'self.board\n{self.board}')
-
-
-        # check if the game should be aborted or lost
-        if not self.board.is_valid():
-       
-            self.lose = True
-            action = {'type': 'parse', 'content' : f'{next_move} violates rules'} 
-            self.log_event(from_='GM', to='GM', action=action)
-            # stop game
-            return None
 
         self.complete_turns += 1
 
