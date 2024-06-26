@@ -298,6 +298,7 @@ class Chess(GameMaster):
         self.log_episode_score("Winner", winner)
         self.log_episode_score("Winner model", winner_model)
         self.log_episode_score(ms.METRIC_SUCCESS, success)
+        self.log_episode_score(ms.METRIC_LOSE, winner=='w')
         self.log_episode_score(ms.METRIC_REQUEST_COUNT, sum(reqs))
         self.log_episode_score(ms.METRIC_REQUEST_COUNT_PARSED, sum(p_reqs))
         self.log_episode_score(ms.METRIC_REQUEST_COUNT_VIOLATED, sum(v_reqs))
