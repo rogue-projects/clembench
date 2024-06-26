@@ -25,7 +25,7 @@ class Chess(GameMaster):
         self.name = experiment['name']
         self.white_model = player_backends[0]
         self.black_model = player_backends[1]
-        self.max_prompt_retries = 7
+        self.max_prompt_retries = 3#7
         self.parse_errors = 0
         self.validity_errors = 0
 
