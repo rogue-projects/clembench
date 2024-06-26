@@ -169,7 +169,7 @@ class Chess(GameMaster):
             self.log_event(from_='GM', to=player, action=action)
             self._append_utterance(msg, player, 'user')
         if  validity_error:
-            msg = f'Your previous move was an illegal move that does not conform to how the figure in position "{last_move[:3]}" moves.'
+            msg = f'Your previous move was an illegal move that does not conform to how the figure in position "{last_move[:2]}" moves.'
             action = {'type': 'get message', 'content': msg}
             self.log_event(from_='GM', to=player, action=action)
             self._append_utterance(msg, player, 'user')
@@ -207,13 +207,10 @@ class Chess(GameMaster):
 
         # get next player reply and add it to its history
         next_move = self._get_utterance(next_player)
-        if self.parse(next_move):
-            self.board.push(chess.Move.from_uci(next_move))
-
         
-        # Check for parseability
-        while  (not self.parse(next_move) \
-                or not chess.Move.from_uci(next_move) in self.board.legal_moves) :
+        # check for the move
+        while  not self.parse(next_move) \
+                or not (chess.Move.from_uci(next_move) in self.board.legal_moves) :
             self.retries += 1 
             if self.retries >=  self.max_prompt_retries:
                 self.aborted = True
@@ -227,7 +224,7 @@ class Chess(GameMaster):
                 next_move = self._get_utterance(next_player,parse_error=True)
                 if not self.parse(next_move):
                     continue
-            elif not chess.Move.from_uci(next_move) in self.board.legal_moves :
+            elif not (chess.Move.from_uci(next_move) in self.board.legal_moves) :
                 self.validity_errors += 1
                 action = {'type': 'parse', 'content' : f'"{next_move}" violates movement rules'} 
                 self.log_event(from_='GM', to='GM', action=action)
