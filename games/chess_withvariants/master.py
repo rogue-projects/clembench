@@ -344,6 +344,7 @@ class ChessGameScorer(GameScorer):
         stalemate = int(episode_interactions["Stalemate"]) if not aborted else 0
         checkmate = int(episode_interactions["Checkmate"]) if not aborted else 0
         success =  1 - aborted
+        
         reqs = episode_interactions[ms.METRIC_REQUEST_COUNT][1:]
         played_turns = len(reqs)
         
