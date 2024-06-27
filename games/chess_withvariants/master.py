@@ -6,8 +6,10 @@ import random,copy
 from games.chess_withvariants.utils.board_functions import *
 from games.chess_withvariants.instancegenerator import GAME_NAME
 from games.chess_withvariants.players import ChessPlayer
+from games.chess_withvariants.utils.general import  get_path_stockfish_bin
 import time
 import numpy as np
+import json 
 
 logger = get_logger(__name__)
 
@@ -27,9 +29,10 @@ class Chess(GameMaster):
         self.topic = experiment['name']
         self.white_model = player_backends[0]
         self.black_model = player_backends[1]
-        self.max_prompt_retries = 3#7
+        self.max_prompt_retries = 4#7
         self.parse_errors = 0
         self.validity_errors = 0
+        self.engine =  chess.engine.SimpleEngine.popen_uci(get_path_stockfish_bin())
 
         # initialise attributes that will be used for the evaluation scores
         self.aborted: bool = False
@@ -52,7 +55,9 @@ class Chess(GameMaster):
         self.board_moves = []
         # instantiate both players
         self.white = ChessPlayer(self.white_model, 'w', self.board)
+        self.white_acc = []
         self.black = ChessPlayer(self.black_model, 'b', self.board)
+        self.black_acc = []
 
         # initialise common metrics
         self.request_counts = [0] * (n_turns + 1)
@@ -105,6 +110,8 @@ class Chess(GameMaster):
         self.log_key(ms.METRIC_REQUEST_COUNT, self.request_counts)
         self.log_key(ms.METRIC_REQUEST_COUNT_PARSED, self.parsed_request_counts)
         self.log_key(ms.METRIC_REQUEST_COUNT_VIOLATED, self.violated_request_counts)
+        self.log_key("White acc", self.white_acc)
+        self.log_key("Black acc", self.black_acc)
 
 
 
@@ -150,8 +157,6 @@ class Chess(GameMaster):
     @staticmethod
     def parse(utterance: str) -> bool:
         """Check if the utterance is valid and return move,check(or checkmate)."""
-
-        #pattern_move = r'\b[a-h][1-8][a-h][1-8][nbrqNBRQ]?(\+|#)?\b'
         pattern = re.compile(r'\b[a-h][1-8][a-h][1-8][nbrqNBRQ]?\b')
         return not(pattern.fullmatch(utterance) is None)
 
@@ -206,12 +211,13 @@ class Chess(GameMaster):
         
         # get next player reply and add it to its history
         next_move = self._get_utterance(next_player)
-        self.board_moves.append((self.board),next_move)
-        
+        self.board_moves.append((self.board,next_move))
+
         # check for the move
         while  not self.parse(next_move) \
                 or not (chess.Move.from_uci(next_move) in self.board.legal_moves) :
             self.retries += 1 
+            self.violated_request_counts[self.current_turn] += 1
             if self.retries >=  self.max_prompt_retries:
                 self.aborted = True
                 action = {'type': 'parse', 'content' : f'Ran out of reprompting attempts'} 
@@ -224,13 +230,28 @@ class Chess(GameMaster):
                 next_move = self._get_utterance(next_player,parse_error=True)
                 if not self.parse(next_move):
                     continue
-            elif not (chess.Move.from_uci(next_move) in self.board.legal_moves) :
-                self.validity_errors += 1
-                action = {'type': 'parse', 'content' : f'"{next_move}" violates movement rules'} 
-                self.log_event(from_='GM', to='GM', action=action)
-                next_move = self._get_utterance(next_player,validity_error=True)
+                elif not (chess.Move.from_uci(next_move) in self.board.legal_moves) :
+                    self.validity_errors += 1
+                    action = {'type': 'parse', 'content' : f'"{next_move}" violates movement rules'} 
+                    self.log_event(from_='GM', to='GM', action=action)
+                    next_move = self._get_utterance(next_player,validity_error=True)
+        
+        # A player has committed to a correct move
+        self.parsed_request_counts[self.current_turn] += 1
+        # Calculate accuracy of move    
+        infopre = self.engine.analyse(self.board, limit=chess.engine.Limit(time=2.0))
         self.board.push(chess.Move.from_uci(next_move))
+        infopost = self.engine.analyse(self.board, limit=chess.engine.Limit(time=2.0))
+        cpscorepre = infopre.get("score").relative.score()
+        cpscorepost = infopost.get("score").relative.score()
 
+        winchance_premove = 100 / (1 + np.exp(-0.00368208 * cpscorepre))
+        winchance_postmove = 100 / (1 + np.exp(-0.00368208 * cpscorepost))
+        acc = 103.1668 * np.exp(-0.04354 * (winchance_premove - winchance_postmove)) - 3.1669
+        if next_player == 'w':
+            self.white_acc.append(acc)
+        else: 
+            self.black_acc.append(acc)
 
         
         # add A's reply to B's 
@@ -246,6 +267,7 @@ class Chess(GameMaster):
             self.log_event(from_='GM', to=last_player, action=action)
 
         self.complete_turns += 1
+
         if self.board.is_checkmate():
             self.checkmate = True
             if self.board.outcome().winner == chess.BLACK:
@@ -259,51 +281,6 @@ class Chess(GameMaster):
             self.stalemate = True
             self.winner = 'draw'
             return None
-
-
-
-
-
-
-    def compute_scores(self, episode_interactions: Dict) -> None:
-        """Compute episode-level and turn-level scores (mandatory)."""
-        played_turns = episode_interactions['Played turns']
-        complete_turns = episode_interactions['Complete turns']
-        parse_errors = episode_interactions['Parse errors']
-        validity_errors = episode_interactions['Validity errors']
-        winner = episode_interactions['Winner']
-        winner_model = episode_interactions['Winner model']
-        # turn 0 was only the initial prompts, so we disregard it here
-        reqs = episode_interactions[ms.METRIC_REQUEST_COUNT][1:]
-        p_reqs = episode_interactions[ms.METRIC_REQUEST_COUNT_PARSED][1:]
-        v_reqs = episode_interactions[ms.METRIC_REQUEST_COUNT_VIOLATED][1:]
-        n_turns = len(reqs)
-
-        for turn in range(0, played_turns):
-            self.log_turn_score(turn, ms.METRIC_REQUEST_COUNT, reqs[turn])
-            self.log_turn_score(turn, ms.METRIC_REQUEST_COUNT_PARSED, p_reqs[turn])
-            self.log_turn_score(turn, ms.METRIC_REQUEST_COUNT_VIOLATED, v_reqs[turn])
-
-        
-
-        aborted = int(episode_interactions[ms.METRIC_ABORTED])
-        stalemate = int(episode_interactions["Stalemate"]) if not aborted else 0
-        checkmate = int(episode_interactions["Checkmate"]) if not aborted  and not stalemate else 0
-        success =  1 - lose if not aborted else 0
-        bench_score = complete_turns / n_turns if not aborted else np.nan
-        
-        self.log_episode_score(ms.METRIC_ABORTED, aborted)
-        self.log_episode_score("Checkmate", checkmate)
-        self.log_episode_score("Stalemate", stalemate)
-        self.log_episode_score("Winner", winner)
-        self.log_episode_score("Winner model", winner_model)
-        self.log_episode_score(ms.METRIC_SUCCESS, success)
-        self.log_episode_score(ms.METRIC_LOSE, winner=='w')
-        self.log_episode_score(ms.METRIC_REQUEST_COUNT, sum(reqs))
-        self.log_episode_score(ms.METRIC_REQUEST_COUNT_PARSED, sum(p_reqs))
-        self.log_episode_score(ms.METRIC_REQUEST_COUNT_VIOLATED, sum(v_reqs))
-        self.log_episode_score(ms.METRIC_REQUEST_SUCCESS, sum(p_reqs) / sum(reqs))
-        self.log_episode_score(ms.BENCH_SCORE, bench_score)
 
 
 class ChessGameScorer(GameScorer):
@@ -341,22 +318,21 @@ class ChessGameScorer(GameScorer):
         self.logger.info(f"{self.name}: Logged episode score {score_name}={score_value}.")
 
     def compute_scores(self, episode_interactions: Dict) -> None:
+        # INITIAL CODE
+        print(json.dumps(episode_interactions, indent=4))
         self.score_turns(episode_interactions)
         self.score_game(episode_interactions)
+        # ADDED CODE
 
     def score_turns(self, episode_interactions: Dict) -> None:
-        for turn, (board_state, move) in enumerate(self.board_and_moves):
-            infopre = chess.engine.analyse(board_state, limit=chess.engine.Limit(time=2.0))
-            self.board_state.push(chess.Move.from_uci(move))
-            infopost = chess.engine.analyse(board_state, limit=chess.engine.Limit(time=2.0))
-            cpscorepre = infopre.get("score")
-            cpscorepost = infopost.get("score")
-
-            winchance_premove = 100 / (1 + np.exp(-0.00368208 * cpscorepre))
-            winchance_postmove = 100 / (1 + np.exp(-0.00368208 * cpscorepost))
-            acc = 103.1668 * np.exp(-0.04354 * (winchance_premove - winchance_postmove)) - 3.1669
-            self.log_turn_score(turn, 'Move accuracy', reqs[turn])
-        return [1,2,3]
+        reqs = episode_interactions[ms.METRIC_REQUEST_COUNT][1:]
+        p_reqs = episode_interactions[ms.METRIC_REQUEST_COUNT_PARSED][1:]
+        v_reqs = episode_interactions[ms.METRIC_REQUEST_COUNT_VIOLATED][1:]
+        played_turns = len(reqs)
+        for turn in range(0, played_turns):
+            self.log_turn_score(turn, ms.METRIC_REQUEST_COUNT, reqs[turn])
+            self.log_turn_score(turn, ms.METRIC_REQUEST_COUNT_PARSED, p_reqs[turn])
+            self.log_turn_score(turn, ms.METRIC_REQUEST_COUNT_VIOLATED, v_reqs[turn])
 
     def score_game(self, episode_interactions: Dict) -> None:
         self.score_game_end(episode_interactions)
@@ -365,28 +341,51 @@ class ChessGameScorer(GameScorer):
 
     def score_game_end(self, episode_interactions: Dict) -> None:
         aborted = int(episode_interactions[ms.METRIC_ABORTED])
-        lose = int(episode_interactions[ms.METRIC_LOSE]) if not aborted else 0
-        success = 1 - lose if not aborted else 0
+        stalemate = int(episode_interactions["Stalemate"]) if not aborted else 0
+        checkmate = int(episode_interactions["Checkmate"]) if not aborted else 0
+        success =  1 - aborted
+        reqs = episode_interactions[ms.METRIC_REQUEST_COUNT][1:]
+        played_turns = len(reqs)
+        
+        complete_turns = episode_interactions['Complete turns']
+        bench_score = complete_turns / complete_turns if not aborted else np.nan
+        winner = episode_interactions['Winner']
+        winner_model = episode_interactions['Winner model']
+        # accuracy metrics
+        white_acc = episode_interactions['White acc']
+        black_acc = episode_interactions['Black acc']
 
         self.log_episode_score(ms.METRIC_ABORTED, aborted)
-        self.log_episode_score(ms.METRIC_LOSE, lose)
         self.log_episode_score(ms.METRIC_SUCCESS, success)
+        self.log_episode_score(ms.METRIC_LOSE, winner=='w')
+        self.log_episode_score(ms.BENCH_SCORE, bench_score)
+        self.log_episode_score("Checkmate", checkmate)
+        self.log_episode_score("Stalemate", stalemate)
+        self.log_episode_score("Winner", winner)
+        self.log_episode_score("Winner model", winner_model)
+        self.log_episode_score("White acc", white_acc)
+        self.log_episode_score("Black acc", black_acc)
 
     def score_requests(self, episode_interactions: Dict):
         # logging total request count, parsed, violated, and success ratio of parsed requests over all requests
-        request_count = episode_interactions[
-            ms.METRIC_REQUEST_COUNT]  # could also be calculated by adding parsed and violated requests
-        parsed_requests = episode_interactions[ms.METRIC_REQUEST_COUNT_PARSED]
-        violated_requests = episode_interactions[ms.METRIC_REQUEST_COUNT_VIOLATED]
-
-        self.log_episode_score(ms.METRIC_REQUEST_COUNT, request_count)
-        self.log_episode_score(ms.METRIC_REQUEST_COUNT_PARSED, parsed_requests)
-        self.log_episode_score(ms.METRIC_REQUEST_COUNT_VIOLATED, violated_requests)
-        self.log_episode_score(ms.METRIC_REQUEST_SUCCESS, parsed_requests / request_count)
+        
+        # turn 0 was only the initial prompts, so we disregard it here
+        reqs = episode_interactions[ms.METRIC_REQUEST_COUNT][1:]
+        p_reqs = episode_interactions[ms.METRIC_REQUEST_COUNT_PARSED][1:]
+        v_reqs = episode_interactions[ms.METRIC_REQUEST_COUNT_VIOLATED][1:]
+        parse_errors = episode_interactions['Parse errors']
+        validity_errors = episode_interactions['Validity errors']
+        self.log_episode_score(ms.METRIC_REQUEST_COUNT, sum(reqs))
+        self.log_episode_score(ms.METRIC_REQUEST_COUNT_PARSED, sum(p_reqs))
+        self.log_episode_score(ms.METRIC_REQUEST_COUNT_VIOLATED, sum(v_reqs))
+        self.log_episode_score(ms.METRIC_REQUEST_SUCCESS, sum(p_reqs) / sum(reqs))
 
     def log_main_score(self, episode_interactions: Dict):
         # Replace this function call with a function that logs your main score aka BENCH_SCORE
         # TODO: implement this logging 
+        print('------MAIN SCORE LOGIGNG-----')
+        print(episode_interactions)
+        
         return [1,2,3]
 
 
