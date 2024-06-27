@@ -7,6 +7,7 @@ from games.chess_withvariants.utils.board_functions import *
 from games.chess_withvariants.instancegenerator import GAME_NAME
 from games.chess_withvariants.players import ChessPlayer
 import time
+import numpy as np
 
 logger = get_logger(__name__)
 
@@ -48,7 +49,7 @@ class Chess(GameMaster):
         self.current_turn: int = 0
         self.game_id = game_id
         self.board = chess.Board(fen=board)
-        
+        self.board_moves = []
         # instantiate both players
         self.white = ChessPlayer(self.white_model, 'w', self.board)
         self.black = ChessPlayer(self.black_model, 'b', self.board)
@@ -104,6 +105,7 @@ class Chess(GameMaster):
         self.log_key(ms.METRIC_REQUEST_COUNT, self.request_counts)
         self.log_key(ms.METRIC_REQUEST_COUNT_PARSED, self.parsed_request_counts)
         self.log_key(ms.METRIC_REQUEST_COUNT_VIOLATED, self.violated_request_counts)
+
 
 
     def play(self) -> None:
@@ -204,6 +206,7 @@ class Chess(GameMaster):
         
         # get next player reply and add it to its history
         next_move = self._get_utterance(next_player)
+        self.board_moves.append((self.board),next_move)
         
         # check for the move
         while  not self.parse(next_move) \
@@ -342,8 +345,17 @@ class ChessGameScorer(GameScorer):
         self.score_game(episode_interactions)
 
     def score_turns(self, episode_interactions: Dict) -> None:
-        # Loop over turns, calculate and log turn-specific scores
-        # TODO: implement this scoring
+        for turn, (board_state, move) in enumerate(self.board_and_moves):
+            infopre = chess.engine.analyse(board_state, limit=chess.engine.Limit(time=2.0))
+            self.board_state.push(chess.Move.from_uci(move))
+            infopost = chess.engine.analyse(board_state, limit=chess.engine.Limit(time=2.0))
+            cpscorepre = infopre.get("score")
+            cpscorepost = infopost.get("score")
+
+            winchance_premove = 100 / (1 + np.exp(-0.00368208 * cpscorepre))
+            winchance_postmove = 100 / (1 + np.exp(-0.00368208 * cpscorepost))
+            acc = 103.1668 * np.exp(-0.04354 * (winchance_premove - winchance_postmove)) - 3.1669
+            self.log_turn_score(turn, 'Move accuracy', reqs[turn])
         return [1,2,3]
 
     def score_game(self, episode_interactions: Dict) -> None:
