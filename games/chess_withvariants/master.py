@@ -27,11 +27,17 @@ class Chess(GameMaster):
         # save experiment and player attributes that will be necessary later
         self.name = GAME_NAME
         self.topic = experiment['name']
-        self.white_model = player_backends[0]
-        self.black_model = player_backends[1]
+        if random.randint(0,1): 
+            self.target_player = 'w'
+            self.white_model = player_backends[0]
+            self.black_model = player_backends[1]
+        else: 
+            self.target_player = 'b'
+            self.white_model = player_backends[1]
+            self.black_model = player_backends[0]
         self.max_prompt_retries = 4#7
-        self.parse_errors = 0
-        self.validity_errors = 0
+        self.parse_errors = [] 
+        self.validity_errors = []
         self.engine =  chess.engine.SimpleEngine.popen_uci(get_path_stockfish_bin())
 
         # initialise attributes that will be used for the evaluation scores
@@ -111,6 +117,8 @@ class Chess(GameMaster):
         self.log_key(ms.METRIC_REQUEST_COUNT_VIOLATED, self.violated_request_counts)
         self.log_key("White acc", self.white_acc)
         self.log_key("Black acc", self.black_acc)
+        self.log_key("Target player",self.target_player)
+        self.log_key("Retries",self.retries)
 
 
 
@@ -212,6 +220,8 @@ class Chess(GameMaster):
         
         # get next player reply and add it to its history
         next_move = self._get_utterance(next_player)
+        self.parse_errors.append(0)
+        self.validity_errors.append(0)
 
         # check for the move
         while  not self.parse(next_move) \
@@ -224,12 +234,12 @@ class Chess(GameMaster):
                 self.log_event(from_='GM', to='GM', action=action)
                 return None
             if not self.parse(next_move):
-                self.parse_errors += 1
+                self.parse_errors[-1] += 1
                 action = {'type': 'parse', 'content' : f'"{next_move}" does not parse.'} 
                 self.log_event(from_='GM', to='GM', action=action)
                 next_move = self._get_utterance(next_player,parse_error=True)
             elif not (chess.Move.from_uci(next_move) in self.board.legal_moves) :
-                self.validity_errors += 1
+                self.validity_errors[-1] += 1
                 action = {'type': 'parse', 'content' : f'"{next_move}" violates movement rules'} 
                 self.log_event(from_='GM', to='GM', action=action)
                 next_move = self._get_utterance(next_player,validity_error=True)
@@ -237,14 +247,20 @@ class Chess(GameMaster):
         # A player has committed to a correct move
         self.parsed_request_counts[self.current_turn] += 1
         # Calculate accuracy of move    
-        infopre = self.engine.analyse(self.board, limit=chess.engine.Limit(time=2.0))
+        limit = chess.engine.Limit(depth=20)
+        infopre = self.engine.analyse(self.board, limit=limit)
         self.board.push(chess.Move.from_uci(next_move))
-        infopost = self.engine.analyse(self.board, limit=chess.engine.Limit(time=2.0))
-        cpscorepre = infopre.get("score").relative.score()
-        cpscorepost = infopost.get("score").relative.score()
-
+        infopost = self.engine.analyse(self.board, limit=limit)
+        if next_player == 'w':
+            cpscorepre = infopre.get("score").white().score()
+            cpscorepost = infopost.get("score").white().score()
+        else: 
+            cpscorepre = infopre.get("score").black().score()
+            cpscorepost = infopost.get("score").black().score()
+        
         winchance_premove = 100 / (1 + np.exp(-0.00368208 * cpscorepre))
         winchance_postmove = 100 / (1 + np.exp(-0.00368208 * cpscorepost))
+        
         acc = 103.1668 * np.exp(-0.04354 * (winchance_premove - winchance_postmove)) - 3.1669
         if next_player == 'w':
             self.white_acc.append(acc)
@@ -293,11 +309,16 @@ class ChessGameScorer(GameScorer):
             "episode scores": {},
         }
 
+    """---------------------------"""
+    """ LOGGING/WRITING FUNCTIONS """
+    """---------------------------"""
+    
     def store_scores(self, results_root: str, dialogue_pair: str, game_record_dir: str):
         self.store_results_file(self.scores, "scores.json",
                                 dialogue_pair=dialogue_pair,
                                 sub_dir=game_record_dir,
                                 root_dir=results_root)
+
 
     def log_turn_score(self, turn_idx, score_name, score_value):
         if isinstance(score_value, bool):
@@ -315,68 +336,101 @@ class ChessGameScorer(GameScorer):
         self.scores["episode scores"][score_name] = score_value
         self.logger.info(f"{self.name}: Logged episode score {score_name}={score_value}.")
 
+
+    """----------------------------"""
+    """ COMPUTING METRIC FUNCTIONS """
+    """----------------------------"""
+
     def compute_scores(self, episode_interactions: Dict) -> None:
-        # INITIAL CODE
-        print(json.dumps(episode_interactions, indent=4))
         self.score_turns(episode_interactions)
         self.score_game(episode_interactions)
-        # ADDED CODE
-
-    def score_turns(self, episode_interactions: Dict) -> None:
-        reqs = episode_interactions[ms.METRIC_REQUEST_COUNT][1:]
-        p_reqs = episode_interactions[ms.METRIC_REQUEST_COUNT_PARSED][1:]
-        v_reqs = episode_interactions[ms.METRIC_REQUEST_COUNT_VIOLATED][1:]
-        played_turns = len(reqs)
-        for turn in range(0, played_turns):
-            self.log_turn_score(turn, ms.METRIC_REQUEST_COUNT, reqs[turn])
-            self.log_turn_score(turn, ms.METRIC_REQUEST_COUNT_PARSED, p_reqs[turn])
-            self.log_turn_score(turn, ms.METRIC_REQUEST_COUNT_VIOLATED, v_reqs[turn])
-
-    def score_game(self, episode_interactions: Dict) -> None:
-        self.score_game_end(episode_interactions)
-        self.score_requests(episode_interactions)
-
-    def score_game_end(self, episode_interactions: Dict) -> None:
-        aborted = int(episode_interactions[ms.METRIC_ABORTED])
-        stalemate = int(episode_interactions["Stalemate"]) if not aborted else 0
-        checkmate = int(episode_interactions["Checkmate"]) if not aborted else 0
-        success =  1 - aborted
-
-        reqs = episode_interactions[ms.METRIC_REQUEST_COUNT][1:]
-        played_turns = len(reqs)
-
-        complete_turns = episode_interactions['Complete turns']
-        bench_score = complete_turns / complete_turns if not aborted else np.nan
-        winner = episode_interactions['Winner']
-        winner_model = episode_interactions['Winner model']
-        # accuracy metrics
-        white_acc = episode_interactions['White acc']
-        black_acc = episode_interactions['Black acc']
-
-        self.log_episode_score(ms.METRIC_ABORTED, aborted)
-        self.log_episode_score(ms.METRIC_SUCCESS, success)
-        self.log_episode_score(ms.METRIC_LOSE, winner=='w')
-        self.log_episode_score(ms.BENCH_SCORE, bench_score)
-        self.log_episode_score("Checkmate", checkmate)
-        self.log_episode_score("Stalemate", stalemate)
-        self.log_episode_score("Winner", winner)
-        self.log_episode_score("Winner model", winner_model)
-        self.log_episode_score("White acc", white_acc)
-        self.log_episode_score("Black acc", black_acc)
-
-    def score_requests(self, episode_interactions: Dict):
-        # logging total request count, parsed, violated, and success ratio of parsed requests over all requests
-
+    
+    def get_target_turn_req_metrics(self, episode_interactions: Dict):
+        """ 
+        Support function to get ONLY the metrics from the one player that
+        was set as target. Should be player_backends[0]
+        """
         # turn 0 was only the initial prompts, so we disregard it here
         reqs = episode_interactions[ms.METRIC_REQUEST_COUNT][1:]
         p_reqs = episode_interactions[ms.METRIC_REQUEST_COUNT_PARSED][1:]
         v_reqs = episode_interactions[ms.METRIC_REQUEST_COUNT_VIOLATED][1:]
-        parse_errors = episode_interactions['Parse errors']
-        validity_errors = episode_interactions['Validity errors']
+        parse_err = episode_interactions['Parse errors']
+        val_err= episode_interactions['Validity errors']
+        if episode_interactions['Target player'] == 'w':# we only want white
+            reqs = reqs[::2]        
+            p_reqs = p_reqs[::2]    
+            v_reqs = v_reqs[::2]   
+            parse_err= parse_err[::2]        
+            val_err= val_err[::2]        
+        else:  # we only want black
+            reqs = reqs[1::2]      
+            p_reqs = p_reqs[1::2] 
+            v_reqs = v_reqs[1::2]
+            parse_err= parse_err[1::2]        
+            val_err= val_err[1::2]        
+        # accuracy metrics
+        if episode_interactions['Target player'] == 'w':# we only want white
+            acc = episode_interactions['White acc'] 
+        else:
+            acc = episode_interactions['Black acc'] 
+        return reqs,p_reqs,v_reqs,parse_err,val_err,acc
+
+
+    def score_turns(self, episode_interactions: Dict) -> None:
+        # response metrics
+        reqs,p_reqs,v_reqs,parse_err,val_err,acc= self.get_target_turn_req_metrics(episode_interactions)
+        played_turns = len(reqs)
+        #print(played_turns)
+        #print(len(p_reqs))
+        #print(len(v_reqs))
+        #print(len(parse_err))
+        #print(len(val_err))
+        #print(len(acc))
+        for turn in range(played_turns):
+            self.log_turn_score(turn, ms.METRIC_REQUEST_COUNT, reqs[turn])
+            self.log_turn_score(turn, ms.METRIC_REQUEST_COUNT_PARSED, p_reqs[turn])
+            self.log_turn_score(turn, ms.METRIC_REQUEST_COUNT_VIOLATED, v_reqs[turn])
+            self.log_turn_score(turn, "Parse errors", parse_err[turn])
+            self.log_turn_score(turn, "Validity errors", val_err[turn])
+            self.log_turn_score(turn, "Accuracy", acc[turn])
+
+
+    def score_game(self, episode_interactions: Dict) -> None:
+        reqs,p_reqs,v_reqs,parse_err,val_err,acc = self.get_target_turn_req_metrics(episode_interactions)
+        aborted = int(episode_interactions[ms.METRIC_ABORTED])
+        stalemate = int(episode_interactions["Stalemate"]) if not aborted else 0
+        checkmate = int(episode_interactions["Checkmate"]) if not aborted else 0
+        target_player = episode_interactions['Target player']
+        success =  1 - aborted
+
+        winner = episode_interactions['Winner']
+        winner_model = episode_interactions['Winner model']
+        lose = (winner==target_player) and not stalemate
+        retries =  sum(parse_err)+ sum(val_err)
+
+        complete_turns = episode_interactions['Complete turns']
+        parse_rate = 1 - (sum(val_err)+sum(parse_err))/sum(reqs)
+        val_rate = 1- sum(val_err)/sum(reqs)
+        bench_score = complete_turns / complete_turns if not aborted else np.nan
+
+
+        self.log_episode_score(ms.METRIC_ABORTED, aborted)
+        self.log_episode_score(ms.METRIC_SUCCESS, success)
+        self.log_episode_score(ms.METRIC_LOSE, lose)
+        self.log_episode_score("Checkmate", checkmate)
+        self.log_episode_score("Stalemate", stalemate)
+        self.log_episode_score("Target Player", target_player)
+        self.log_episode_score("Winner", winner)
+        self.log_episode_score("Winner model", winner_model)
+        self.log_episode_score("Accuracy", np.mean([i/max(acc) for i in acc]))
+        self.log_episode_score("Retries", retries)
+        self.log_episode_score(ms.BENCH_SCORE, bench_score)
         self.log_episode_score(ms.METRIC_REQUEST_COUNT, sum(reqs))
         self.log_episode_score(ms.METRIC_REQUEST_COUNT_PARSED, sum(p_reqs))
         self.log_episode_score(ms.METRIC_REQUEST_COUNT_VIOLATED, sum(v_reqs))
         self.log_episode_score(ms.METRIC_REQUEST_SUCCESS, sum(p_reqs) / sum(reqs))
+        self.log_episode_score("Parse Rate",parse_rate)
+        self.log_episode_score("Validity Rate",val_rate)
 
 
 
@@ -392,7 +446,7 @@ class ChessBenchmark(GameBenchmark):
 
     # add a description of your game
     def get_description(self):
-        return "Normal chess combined with randomized amount and position of figures."
+        return "Normal chess combined with randomized amount and position of figures. Player 1 is the one whose metrics will be returned."
 
     # copy this, replacing the name of the game master in the return statement
     def create_game_master(self,
