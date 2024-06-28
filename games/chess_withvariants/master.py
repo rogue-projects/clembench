@@ -10,6 +10,7 @@ from games.chess_withvariants.utils.general import  get_path_stockfish_bin
 import time
 import numpy as np
 import json 
+import statistics 
 
 logger = get_logger(__name__)
 
@@ -408,11 +409,13 @@ class ChessGameScorer(GameScorer):
         lose = (winner==target_player) and not stalemate
         retries =  sum(parse_err)+ sum(val_err)
 
-        complete_turns = episode_interactions['Complete turns']
-        parse_rate = 1 - (sum(val_err)+sum(parse_err))/sum(reqs)
-        val_rate = 1- sum(val_err)/sum(reqs)
-        bench_score = complete_turns / complete_turns if not aborted else np.nan
-
+        #complete_turns = episode_interactions['Complete turns']
+        parse_failrate = (sum(val_err)+sum(parse_err))/sum(reqs)
+        val_failrate = sum(val_err)/sum(reqs)
+        avg_acc = np.mean([i/max(acc) for i in acc])
+        # Seems good enough until I care to make something better
+        bench_list = [parse_failrate,val_failrate,avg_acc]
+        bench_score = statistics.harmonic_mean(bench_list) if not aborted else np.nan
 
         self.log_episode_score(ms.METRIC_ABORTED, aborted)
         self.log_episode_score(ms.METRIC_SUCCESS, success)
@@ -422,15 +425,15 @@ class ChessGameScorer(GameScorer):
         self.log_episode_score("Target Player", target_player)
         self.log_episode_score("Winner", winner)
         self.log_episode_score("Winner model", winner_model)
-        self.log_episode_score("Accuracy", np.mean([i/max(acc) for i in acc]))
+        self.log_episode_score("Accuracy",avg_acc)
         self.log_episode_score("Retries", retries)
         self.log_episode_score(ms.BENCH_SCORE, bench_score)
         self.log_episode_score(ms.METRIC_REQUEST_COUNT, sum(reqs))
         self.log_episode_score(ms.METRIC_REQUEST_COUNT_PARSED, sum(p_reqs))
         self.log_episode_score(ms.METRIC_REQUEST_COUNT_VIOLATED, sum(v_reqs))
         self.log_episode_score(ms.METRIC_REQUEST_SUCCESS, sum(p_reqs) / sum(reqs))
-        self.log_episode_score("Parse Rate",parse_rate)
-        self.log_episode_score("Validity Rate",val_rate)
+        self.log_episode_score("Parse Rate",1 - parse_failrate)
+        self.log_episode_score("Validity Rate",1 - val_failrate)
 
 
 
