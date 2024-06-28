@@ -52,7 +52,6 @@ class Chess(GameMaster):
         self.current_turn: int = 0
         self.game_id = game_id
         self.board = chess.Board(fen=board)
-        self.board_moves = []
         # instantiate both players
         self.white = ChessPlayer(self.white_model, 'w', self.board)
         self.white_acc = []
@@ -172,12 +171,12 @@ class Chess(GameMaster):
         
         if  parse_error :
             # Add a message to history from the GM to the player
-            msg = 'Your previous move was typed wrongly. Could you respond in the format "n3n4" to move the figure on position n3 to the position n4. Respond only with the next move.'
+            msg = 'Your previous move was typed wrongly. Could you respond in the format "n3n4" to move the figure on position n3 to the position n4. Respond exclusively with the next move.'
             action = {'type': 'get message', 'content': msg}
             self.log_event(from_='GM', to=player, action=action)
             self._append_utterance(msg, player, 'user')
         if  validity_error:
-            msg = f'Your previous move was an illegal move that does not conform to how the figure in position "{last_move[:2]}" moves.'
+            msg = f'Your previous move was an illegal move that does not conform to how the figure in position "{last_move[:2]}" moves. Respond exclusively with the next move.'
             action = {'type': 'get message', 'content': msg}
             self.log_event(from_='GM', to=player, action=action)
             self._append_utterance(msg, player, 'user')
@@ -199,7 +198,9 @@ class Chess(GameMaster):
 
     def turn(self) -> None:
         """Perform a game turn, a single utterance by black or white."""
-        #time.sleep(1)
+        
+
+        # Figure out whose turn it is
         next_player = 'w'
         last_player = 'b'
         if (self.current_turn != 1):
@@ -211,7 +212,6 @@ class Chess(GameMaster):
         
         # get next player reply and add it to its history
         next_move = self._get_utterance(next_player)
-        self.board_moves.append((self.board,next_move))
 
         # check for the move
         while  not self.parse(next_move) \
@@ -228,14 +228,12 @@ class Chess(GameMaster):
                 action = {'type': 'parse', 'content' : f'"{next_move}" does not parse.'} 
                 self.log_event(from_='GM', to='GM', action=action)
                 next_move = self._get_utterance(next_player,parse_error=True)
-                if not self.parse(next_move):
-                    continue
-                elif not (chess.Move.from_uci(next_move) in self.board.legal_moves) :
-                    self.validity_errors += 1
-                    action = {'type': 'parse', 'content' : f'"{next_move}" violates movement rules'} 
-                    self.log_event(from_='GM', to='GM', action=action)
-                    next_move = self._get_utterance(next_player,validity_error=True)
-        
+            elif not (chess.Move.from_uci(next_move) in self.board.legal_moves) :
+                self.validity_errors += 1
+                action = {'type': 'parse', 'content' : f'"{next_move}" violates movement rules'} 
+                self.log_event(from_='GM', to='GM', action=action)
+                next_move = self._get_utterance(next_player,validity_error=True)
+
         # A player has committed to a correct move
         self.parsed_request_counts[self.current_turn] += 1
         # Calculate accuracy of move    
@@ -337,17 +335,16 @@ class ChessGameScorer(GameScorer):
     def score_game(self, episode_interactions: Dict) -> None:
         self.score_game_end(episode_interactions)
         self.score_requests(episode_interactions)
-        self.log_main_score(episode_interactions)
 
     def score_game_end(self, episode_interactions: Dict) -> None:
         aborted = int(episode_interactions[ms.METRIC_ABORTED])
         stalemate = int(episode_interactions["Stalemate"]) if not aborted else 0
         checkmate = int(episode_interactions["Checkmate"]) if not aborted else 0
         success =  1 - aborted
-        
+
         reqs = episode_interactions[ms.METRIC_REQUEST_COUNT][1:]
         played_turns = len(reqs)
-        
+
         complete_turns = episode_interactions['Complete turns']
         bench_score = complete_turns / complete_turns if not aborted else np.nan
         winner = episode_interactions['Winner']
@@ -369,7 +366,7 @@ class ChessGameScorer(GameScorer):
 
     def score_requests(self, episode_interactions: Dict):
         # logging total request count, parsed, violated, and success ratio of parsed requests over all requests
-        
+
         # turn 0 was only the initial prompts, so we disregard it here
         reqs = episode_interactions[ms.METRIC_REQUEST_COUNT][1:]
         p_reqs = episode_interactions[ms.METRIC_REQUEST_COUNT_PARSED][1:]
@@ -381,13 +378,6 @@ class ChessGameScorer(GameScorer):
         self.log_episode_score(ms.METRIC_REQUEST_COUNT_VIOLATED, sum(v_reqs))
         self.log_episode_score(ms.METRIC_REQUEST_SUCCESS, sum(p_reqs) / sum(reqs))
 
-    def log_main_score(self, episode_interactions: Dict):
-        # Replace this function call with a function that logs your main score aka BENCH_SCORE
-        # TODO: implement this logging 
-        print('------MAIN SCORE LOGIGNG-----')
-        print(episode_interactions)
-        
-        return [1,2,3]
 
 
 
