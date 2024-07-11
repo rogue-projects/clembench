@@ -58,7 +58,7 @@ class Chess(GameMaster):
         # initialise game variables
         self.current_turn: int = 0
         self.game_id = game_id
-        self.board = chess.Board(fen=board)
+        self.board = chess.variant.HordeBoard(fen=board)
         # instantiate both players
         self.white = ChessPlayer(self.white_model, 'w', self.board)
         self.white_acc = []

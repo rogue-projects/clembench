@@ -1,5 +1,5 @@
 import chess
-
+import chess.variant
 # https://github.com/official-stockfish/Stockfish/blob/master/src/types.h#L192-L196
 # Hardcoded to have a standarized test
 piece_values = {

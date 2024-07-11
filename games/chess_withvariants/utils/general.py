@@ -13,9 +13,9 @@ def get_path_file():
 #We will load the binary here
 def get_path_stockfish_bin():
     if platform == "linux" or platform == "linux2":
-        return os.path.join(get_path_file(), "resources","stockfish-ubuntu-x86-64-avx2" )
+        return os.path.join(get_path_file(), "resources","fairy-stockfish_x86-64" )
     elif platform  == 'darwin':
-        return os.path.join(get_path_file(), "resources","stockfish-macos-x86-64" )
+        return os.path.join(get_path_file(), "resources","fairy-stockfish_x86-64" )
 
 
 
