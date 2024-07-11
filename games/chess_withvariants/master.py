@@ -104,31 +104,23 @@ class Chess(GameMaster):
 
     def log_eval_assets(self) -> None:
         """Aux to log variables needed for scoring (firstlast specific)"""
-        print('boop1')
         self.log_key('Played turns', self.current_turn)
         self.log_key('Complete turns', self.complete_turns)
         self.log_key("Parse errors", self.parse_errors)
         self.log_key("Validity errors", self.validity_errors)
-        print('boop2')
         self.log_key(ms.METRIC_ABORTED, self.aborted)
-        print(self.winner)
-        print(self.winner_model)
         self.log_key(ms.METRIC_ABORTED, self.aborted)
         self.log_key("Winner", self.winner)
         self.log_key("Winner model", str(self.winner_model))
         self.log_key("Checkmate", self.checkmate)
         self.log_key("Stalemate", self.stalemate)
-        print('boop3')
         self.log_key(ms.METRIC_REQUEST_COUNT, self.request_counts)
         self.log_key(ms.METRIC_REQUEST_COUNT_PARSED, self.parsed_request_counts)
         self.log_key(ms.METRIC_REQUEST_COUNT_VIOLATED, self.violated_request_counts)
-        print('boop4')
         self.log_key("White acc", self.white_acc)
         self.log_key("Black acc", self.black_acc)
-        print('boop5')
         self.log_key("Target player",self.target_player)
         self.log_key("Retries",self.retries)
-        print('boop6')
 
 
 
