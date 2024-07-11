@@ -58,7 +58,8 @@ class Chess(GameMaster):
         # initialise game variables
         self.current_turn: int = 0
         self.game_id = game_id
-        self.board = chess.variant.HordeBoard(fen=board)
+        #self.board = chess.variant.HordeBoard(fen=board)
+        self.board = chess.Board(fen=board)
         # instantiate both players
         self.white = ChessPlayer(self.white_model, 'w', self.board)
         self.white_acc = []
@@ -259,7 +260,7 @@ class Chess(GameMaster):
         else: 
             cpscorepre = infopre.get("score").black().score()
             cpscorepost = infopost.get("score").black().score()
-        #print(self.board)
+        print(self.board)
         #print(self.board.is_checkmate()) 
         #print(self.board.is_stalemate()) 
         #print(infopre) 
@@ -394,12 +395,6 @@ class ChessGameScorer(GameScorer):
         # response metrics
         reqs,p_reqs,v_reqs,parse_err,val_err,acc= self.get_target_turn_req_metrics(episode_interactions)
         played_turns = len(reqs)
-        #print(played_turns)
-        #print(len(p_reqs))
-        #print(len(v_reqs))
-        #print(len(parse_err))
-        #print(len(val_err))
-        #print(len(acc))
         for turn in range(played_turns):
             self.log_turn_score(turn, ms.METRIC_REQUEST_COUNT, reqs[turn])
             self.log_turn_score(turn, ms.METRIC_REQUEST_COUNT_PARSED, p_reqs[turn])
@@ -425,6 +420,7 @@ class ChessGameScorer(GameScorer):
         #complete_turns = episode_interactions['Complete turns']
         parse_failrate = (sum(val_err)+sum(parse_err))/sum(reqs)
         val_failrate = sum(val_err)/sum(reqs)
+        acc = [i for i in acc if i != -1.]
         avg_acc = np.mean([i/max(acc) for i in acc])
         # Seems good enough until I care to make something better
         bench_list = [parse_failrate,val_failrate,avg_acc]
