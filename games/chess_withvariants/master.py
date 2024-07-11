@@ -258,7 +258,10 @@ class Chess(GameMaster):
         else: 
             cpscorepre = infopre.get("score").black().score()
             cpscorepost = infopost.get("score").black().score()
-        
+        #print(infopre) 
+        #print(infopost) 
+        #print(cpscorepre) 
+        #print(cpscorepost) 
         winchance_premove = 100 / (1 + np.exp(-0.00368208 * cpscorepre))
         winchance_postmove = 100 / (1 + np.exp(-0.00368208 * cpscorepost))
         
