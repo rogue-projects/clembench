@@ -67,9 +67,10 @@ class ChessGameInstanceGenerator(GameInstanceGenerator):
             '960' : (lambda :(chess.Board.from_chess960_pos(random.randint(0,959)).fen().split()[0]))
         }
         experiments = { 'random8_figures' : (lambda :self.randomBoard(piece_amount=8))}
+        #experiments = { 'baseline' : (lambda :generateBoard())}
         #experiments = {  'baseline' : (lambda :generateBoard())}
         n_turns = [4,7,10,10]
-        #n_turns = [4]
+        n_turns = [400]
         for exp_name in experiments:
             experiment = self.add_experiment(exp_name)
             for idx,num in enumerate(n_turns):
