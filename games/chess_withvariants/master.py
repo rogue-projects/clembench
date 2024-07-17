@@ -28,6 +28,7 @@ class Chess(GameMaster):
         # save experiment and player attributes that will be necessary later
         self.name = GAME_NAME
         self.topic = experiment['name']
+        self.board_reminder = experiment['board_reminder']
         if random.randint(0,1): 
             self.target_player = 'w'
             self.white_model = player_backends[0]
@@ -122,6 +123,7 @@ class Chess(GameMaster):
         self.log_key("Black acc", self.black_acc)
         self.log_key("Target player",self.target_player)
         self.log_key("Retries",self.retries)
+        self.log_key("Board reminder",self.board_reminder)
 
 
 
@@ -186,13 +188,16 @@ class Chess(GameMaster):
             action = {'type': 'get message', 'content': msg}
             self.log_event(from_='GM', to=player, action=action)
             self._append_utterance(msg, player, 'user')
-        if  validity_error:
+        elif  validity_error:
             msg = f'Your previous move was an illegal move that does not conform to how the figure in position "{last_move[:2]}" moves. Respond exclusively with the next move.'
             action = {'type': 'get message', 'content': msg}
             self.log_event(from_='GM', to=player, action=action)
             self._append_utterance(msg, player, 'user')
-
-
+        elif  self.board_reminder and self.turn != 1:
+            msg = f'The board looks like this:\n{self.board}\nNext move:\n {last_move}.'
+            action = {'type': 'get message', 'content': msg}
+            self.log_event(from_='GM', to=player, action=action)
+            self._append_utterance(msg, player, 'user')
 
         prompt, raw_answer, answer = player_class(player_class.history,self.current_turn)
         # add API call to the records
@@ -423,19 +428,21 @@ class ChessGameScorer(GameScorer):
         acc = [i for i in acc if i != -1.]
         avg_acc = np.mean([i/max(acc) for i in acc])
         # Seems good enough until I care to make something better
-        bench_list = [parse_failrate,val_failrate,avg_acc]
-        bench_score = statistics.harmonic_mean(bench_list) if not aborted else np.nan
-
+        bench_list = [1.-parse_failrate,1.-val_failrate,avg_acc]
+        #print(bench_list)
+        bench_score = statistics.harmonic_mean(bench_list) if not aborted else 0.
+        #print(type(bench_score))
+        #print(bench_score)
         self.log_episode_score(ms.METRIC_ABORTED, aborted)
         self.log_episode_score(ms.METRIC_SUCCESS, success)
         self.log_episode_score(ms.METRIC_LOSE, lose)
         self.log_episode_score("Checkmate", checkmate)
         self.log_episode_score("Stalemate", stalemate)
-        self.log_episode_score("Target Player", target_player)
-        self.log_episode_score("Winner", winner)
-        self.log_episode_score("Winner model", winner_model)
+        #self.log_episode_score("Target Player", target_player)
+        #self.log_episode_score("Winner", winner)
+        #self.log_episode_score("Winner model", winner_model)
         self.log_episode_score("Accuracy",avg_acc)
-        self.log_episode_score("Retries", retries)
+        #self.log_episode_score("Retries", retries)
         self.log_episode_score(ms.BENCH_SCORE, bench_score)
         self.log_episode_score(ms.METRIC_REQUEST_COUNT, sum(reqs))
         self.log_episode_score(ms.METRIC_REQUEST_COUNT_PARSED, sum(p_reqs))
