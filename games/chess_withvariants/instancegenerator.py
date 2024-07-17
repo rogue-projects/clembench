@@ -58,31 +58,42 @@ class ChessGameInstanceGenerator(GameInstanceGenerator):
 
 
         ### GENERATE BASELINE  
-        self.baseline_template = self.load_template('resources/default_prompt_baseline.template')
+        self.baseline_template = self.load_template('resources/terse_prompt_baseline.template')
         experiments = {
             'baseline' : (lambda :generateBoard()),
-            'random8_figures' : (lambda :self.randomBoard(piece_amount=8)),
-            'random16_figures' : (lambda :self.randomBoard()),
-            'random24_figures' : (lambda :self.randomBoard(piece_amount=24)),
-            '960' : (lambda :(chess.Board.from_chess960_pos(random.randint(0,959)).fen().split()[0]))
+            'random_8_figures' : (lambda :self.randomBoard(piece_amount=8)),
+            'random_16_figures' : (lambda :self.randomBoard()),
+            'random_24_figures' : (lambda :self.randomBoard(piece_amount=24)),
+            'chess960' : (lambda :(chess.Board.from_chess960_pos(random.randint(0,959)).fen().split()[0]))
         }
         #experiments = { 'random8_figures' : (lambda :self.randomBoard(piece_amount=8))}
         #experiments = { 'baseline' : (lambda :generateBoard())}
         #experiments = {  'baseline' : (lambda :generateBoard())}
         n_turns = [4,7,10,10]
         n_turns = [400]
+        
         for exp_name in experiments:
             experiment = self.add_experiment(exp_name)
-            for idx,num in enumerate(n_turns):
-                instance = self.add_game_instance(experiment,idx)
-                instance['board']=  (experiments[exp_name])()
-                instance['n_turns']= num
-                #print(instance['board'])
-                #assert(False)
-                board= str(chess.Board(fen=instance['board']))
-                prompt = string.Template(self.baseline_template) \
-                        .substitute(skill='expert',board=board)
-                instance['initial_prompt'] = prompt
+            for board_reminder in [True,False] :
+                for idx,num in enumerate(n_turns):
+                    instance = self.add_game_instance(experiment,idx)
+                    instance['board']=  (experiments[exp_name])()
+                    instance['n_turns']= num
+                    instance['board_reminder'] = board_reminder
+                    #print(instance['board'])
+                    #assert(False)
+                    board= str(chess.Board(fen=instance['board']))
+                    variant = ""
+                    pieces = ""
+                    if exp_name.split('_')[0] == 'random':
+                        pieces = exp_name.split('_')[1]
+                        variant = "You are playing a variant of chess where each player plays with" +pieces+ "randomised pieces."
+                    elif exp_name == 'chess960':
+                        variant = "You are playing a game of Fischer random chess (Chess960)"
+                    prompt = string.Template(self.baseline_template) \
+                            .substitute(skill='expert',board=board,variant=variant)
+                    
+                    instance['initial_prompt'] = prompt
 
         
 

@@ -1,0 +1,12 @@
+Let's play a game of chess where you are an $skill chess player. $variant Our initial board is: 
+
+$board
+
+All the pieces move like in a normal game. 
+
+Castling and en-passant are not allowed and like in a normal chess game the loss condition is receiving a checkmate or stalemate. If you break the rules of moving in chess you lose as well.
+
+Moves have to be written in the UCI format ("b5b4" where the figure in b5 should be moved to position b4). 
+You have to write ONLY the next move, do not add any explanation or commentary to your moves.
+Your objective is to win, or failing this, to draw.
+
