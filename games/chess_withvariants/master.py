@@ -61,10 +61,10 @@ class Chess(GameMaster):
         self.board = chess.Board(fen=board)
         # instantiate both players
         self.white = ChessPlayer(self.white_model, 'w', self.board)
-        self.white_acc = []
         self.black = ChessPlayer(self.black_model, 'b', self.board)
-        self.black_acc = []
 
+        self.white_acc = [0] * (n_turns + 1)
+        self.black_acc = [0] * (n_turns + 1)
         # initialise common metrics
         self.request_counts = [0] * (n_turns + 1)
         self.parsed_request_counts = [0] * (n_turns + 1)
@@ -228,8 +228,6 @@ class Chess(GameMaster):
         
         # get next player reply and add it to its history
         next_move = self._get_utterance(next_player)
-        self.parse_errors.append(0)
-        self.validity_errors.append(0)
 
         # check for the move
         while  not self.parse(next_move) \
@@ -242,12 +240,12 @@ class Chess(GameMaster):
                 self.log_event(from_='GM', to='GM', action=action)
                 return None
             if not self.parse(next_move):
-                self.parse_errors[-1] += 1
+                self.parse_errors[self.current_turn] += 1
                 action = {'type': 'parse', 'content' : f'"{next_move}" does not parse.'} 
                 self.log_event(from_='GM', to='GM', action=action)
                 next_move = self._get_utterance(next_player,parse_error=True)
             elif not (chess.Move.from_uci(next_move) in self.board.legal_moves) :
-                self.validity_errors[-1] += 1
+                self.validity_errors[self.current_turn] += 1
                 action = {'type': 'parse', 'content' : f'"{next_move}" violates movement rules'} 
                 self.log_event(from_='GM', to='GM', action=action)
                 next_move = self._get_utterance(next_player,validity_error=True)
@@ -278,14 +276,14 @@ class Chess(GameMaster):
             
             acc = 103.1668 * np.exp(-0.04354 * (winchance_premove - winchance_postmove)) - 3.1669
             if next_player == 'w':
-                self.white_acc.append(acc)
+                self.white_acc[self.current_turn] = acc
             else: 
-                self.black_acc.append(acc)
+                self.black_acc[self.current_turn] = acc
         else: # Mates dont have a score
             if next_player == 'w':
-                self.white_acc.append(-1.)
+                self.white_acc[self.current_turn] = -1
             else: 
-                self.black_acc.append(-1.)
+                self.black_acc[self.current_turn] = -1
 
         
         # add A's reply to B's 
@@ -407,10 +405,6 @@ class ChessGameScorer(GameScorer):
         reqs,p_reqs,v_reqs,parse_err,val_err,acc= self.get_target_turn_req_metrics(episode_interactions)
         played_turns = len(reqs)
         for turn in range(played_turns):
-            print(turn)
-            print(len(reqs))
-            print(len(parse_err))
-            print(len(val_err))
             self.log_turn_score(turn, ms.METRIC_REQUEST_COUNT, reqs[turn])
             self.log_turn_score(turn, ms.METRIC_REQUEST_COUNT_PARSED, p_reqs[turn])
             self.log_turn_score(turn, ms.METRIC_REQUEST_COUNT_VIOLATED, v_reqs[turn])
