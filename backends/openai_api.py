@@ -59,8 +59,6 @@ class OpenAIModel(backends.Model):
             raise AttributeError("Response message role is " + message.role + " but should be 'assistant'")
         response_text = message.content.strip()
         response = json.loads(api_response.json())
-        print("prompt")
-        print(prompt)
-        print("response")
-        print(response)
+        
+
         return prompt, response, response_text

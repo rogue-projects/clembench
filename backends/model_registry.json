@@ -45,6 +45,11 @@
     "backend": "openai"
   },
   {
+    "model_name": "gpt-3.5-turbo-instruct",
+    "model_id": "gpt-3.5-turbo-instruct",
+    "backend": "openai"
+  },
+  {
     "model_name": "gpt-4-1106-preview",
     "model_id": "gpt-4-1106-preview",
     "backend": "openai"
@@ -524,6 +529,13 @@
     "bos_string": "<s>",
     "eos_string": "</s>",
     "eos_to_cull": "</s>"
+  }, 
+  {
+    "model_name": "claude-3-5-sonnet-20240620",
+    "model_id": "claude-3-5-sonnet-20240620",
+    "backend": "anthropic",
+    "supports_images": true,
+    "support_multiple_images": true
   },
   {
     "model_name": "openchat_3.5-GGUF-q5",
