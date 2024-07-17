@@ -28,7 +28,6 @@ class Chess(GameMaster):
         # save experiment and player attributes that will be necessary later
         self.name = GAME_NAME
         self.topic = experiment['name']
-        self.board_reminder = experiment['board_reminder']
         if random.randint(0,1): 
             self.target_player = 'w'
             self.white_model = player_backends[0]
@@ -38,8 +37,6 @@ class Chess(GameMaster):
             self.white_model = player_backends[1]
             self.black_model = player_backends[0]
         self.max_prompt_retries = 4#7
-        self.parse_errors = [] 
-        self.validity_errors = []
         self.engine =  chess.engine.SimpleEngine.popen_uci(get_path_stockfish_bin())
 
         # initialise attributes that will be used for the evaluation scores
@@ -50,13 +47,14 @@ class Chess(GameMaster):
         self.winner_model: str = ''
         self.complete_turns: int = 0
 
-    def setup(self, game_id: int, board: str, n_turns: int, initial_prompt: str) -> None:
+    def setup(self, game_id: int, board: str, n_turns: int, initial_prompt: str, board_reminder: bool) -> None:
         """Setup the episode (mandatory)."""
 
         self.n_turns = n_turns
 
 
         # initialise game variables
+        self.board_reminder = board_reminder
         self.current_turn: int = 0
         self.game_id = game_id
         #self.board = chess.variant.HordeBoard(fen=board)
@@ -71,6 +69,8 @@ class Chess(GameMaster):
         self.request_counts = [0] * (n_turns + 1)
         self.parsed_request_counts = [0] * (n_turns + 1)
         self.violated_request_counts = [0] * (n_turns + 1)
+        self.parse_errors = [0] * (n_turns + 1)
+        self.validity_errors = [0] * (n_turns + 1)
         self.retries = 0
 
         # add initial prompts to each player's messages
@@ -377,7 +377,7 @@ class ChessGameScorer(GameScorer):
         parse_err = episode_interactions['Parse errors']
         val_err= episode_interactions['Validity errors']
         if episode_interactions['Target player'] == 'w':# we only want white
-            reqs = reqs[::2]        
+            reqs = reqs[::2]       
             p_reqs = p_reqs[::2]    
             v_reqs = v_reqs[::2]   
             parse_err= parse_err[::2]        
@@ -388,6 +388,12 @@ class ChessGameScorer(GameScorer):
             v_reqs = v_reqs[1::2]
             parse_err= parse_err[1::2]        
             val_err= val_err[1::2]        
+        limit = episode_interactions['Played turns']
+        reqs = reqs[:limit]
+        p_reqs= p_reqs[:limit]
+        v_reqs = v_reqs[:limit]
+        parse_err = parse_err[:limit]
+        val_err = val_err[:limit]
         # accuracy metrics
         if episode_interactions['Target player'] == 'w':# we only want white
             acc = episode_interactions['White acc'] 
@@ -401,6 +407,10 @@ class ChessGameScorer(GameScorer):
         reqs,p_reqs,v_reqs,parse_err,val_err,acc= self.get_target_turn_req_metrics(episode_interactions)
         played_turns = len(reqs)
         for turn in range(played_turns):
+            print(turn)
+            print(len(reqs))
+            print(len(parse_err))
+            print(len(val_err))
             self.log_turn_score(turn, ms.METRIC_REQUEST_COUNT, reqs[turn])
             self.log_turn_score(turn, ms.METRIC_REQUEST_COUNT_PARSED, p_reqs[turn])
             self.log_turn_score(turn, ms.METRIC_REQUEST_COUNT_VIOLATED, v_reqs[turn])
