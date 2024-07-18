@@ -95,7 +95,7 @@ class ChessGameInstanceGenerator(GameInstanceGenerator):
                             if exp_name.split('_')[0] == 'random':
                                 pieces = exp_name.split('_')[1]
                                 variant = "You are playing a variant of chess where each player plays with " +pieces+ "randomised pieces."
-                            elif exp_name == 'chess960':
+                            elif exp_name.split('_')[0] == 'chess960':
                                 variant = "You are playing a game of Fischer random chess (Chess960)."
                             prompt = string.Template(template) \
                                     .substitute(skill='expert',board=board,variant=variant)
