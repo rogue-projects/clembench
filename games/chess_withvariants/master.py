@@ -423,7 +423,7 @@ class ChessGameScorer(GameScorer):
 
         winner = episode_interactions['Winner']
         winner_model = episode_interactions['Winner model']
-        lose = (winner==target_player) and not stalemate
+        lose = int((winner==target_player) and not stalemate)
         retries =  sum(parse_err)+ sum(val_err)
 
         #complete_turns = episode_interactions['Complete turns']
