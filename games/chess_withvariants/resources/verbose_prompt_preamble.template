@@ -18,16 +18,12 @@ If one player places a piece such that it could capture the opponent’s K/k pie
 
 Your goal is to win the game through checkmate, or if this is impossible avoid losing through a stalemate. You will lose if you move incorrectly too many times, or your responses are not in the above described format "a2a3", so please respond only with valid moves of this format without any explanation or commentary.
 
-
-[Event “…”]
-[Site “...”]
-[Date “…”]
-[EventDate “…”]
-[Round “..”]
+[Event "Live Chess"]
+[Site "Chess.com"]]
+[Date "2020.03.25"]
+[Round “-”]
 [Result “..”]
-[White ""]
-[Black “r"]
-[ECO "D92"]
-[WhiteElo "?"]
-[BlackElo "?"]
-[PlyCount "82"]
+[White "Magnus Carlsen"]
+[Black "Gary Kasparov"]
+[WhiteElo "2832"]
+[BlackElo "2812"]

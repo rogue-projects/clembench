@@ -57,7 +57,8 @@ class ChessGameInstanceGenerator(GameInstanceGenerator):
         #self.instance_utils = InstanceUtils(self.experiment_config, self.game_name)
 
 
-        ### GENERATE BASELINE  
+        ### GENERATE BASELINE
+        
         self.baseline_template = self.load_template('resources/terse_prompt_baseline.template')
         experiments = {
             'baseline' : (lambda :generateBoard()),
@@ -87,9 +88,9 @@ class ChessGameInstanceGenerator(GameInstanceGenerator):
                     pieces = ""
                     if exp_name.split('_')[0] == 'random':
                         pieces = exp_name.split('_')[1]
-                        variant = "You are playing a variant of chess where each player plays with" +pieces+ "randomised pieces."
+                        variant = "You are playing a variant of chess where each player plays with " +pieces+ "randomised pieces."
                     elif exp_name == 'chess960':
-                        variant = "You are playing a game of Fischer random chess (Chess960)"
+                        variant = "You are playing a game of Fischer random chess (Chess960)."
                     prompt = string.Template(self.baseline_template) \
                             .substitute(skill='expert',board=board,variant=variant)
                     

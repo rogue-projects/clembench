@@ -10,3 +10,12 @@ Moves have to be written in the UCI format ("b5b4" where the figure in b5 should
 You have to write ONLY the next move, do not add any explanation or commentary to your moves.
 Your objective is to win, or failing this, to draw.
 
+[Event "Live Chess"]
+[Site "Chess.com"]]
+[Date "2020.03.25"]
+[Round “-”]
+[Result “..”]
+[White "Magnus Carlsen"]
+[Black "Gary Kasparov"]
+[WhiteElo "2832"]
+[BlackElo "2812"]

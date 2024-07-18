@@ -17,17 +17,3 @@ If a P/p piece reaches the opposing players side (reaching squares a1-g1 for bla
 If one player places a piece such that it could capture the opponent’s K/k piece the next move, the opponent is in check. The opponent must then make only a move which removes them from check. If no such move exists, the move is a checkmate, and the first player wins on that turn. If a player has no move which does not cause them to be in check, the game is a stalemate, effectively a draw, and ends on that turn.
 
 Your goal is to win the game through checkmate, or if this is impossible avoid losing through a stalemate. You will lose if you move incorrectly too many times, or your responses are not in the above described format "a2a3", so please respond only with valid moves of this format without any explanation or commentary.
-
-
-[Event “…”]
-[Site “...”]
-[Date “…”]
-[EventDate “…”]
-[Round “..”]
-[Result “..”]
-[White ""]
-[Black “r"]
-[ECO "D92"]
-[WhiteElo "?"]
-[BlackElo "?"]
-[PlyCount "82"]
