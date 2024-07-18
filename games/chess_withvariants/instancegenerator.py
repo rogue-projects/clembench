@@ -71,6 +71,7 @@ class ChessGameInstanceGenerator(GameInstanceGenerator):
         }
         #experiments = {  'baseline' : (lambda :generateBoard())}
         n_turns = [6,30]
+        #n_turns = [6,30]
         #n_turns = [400]
         
         for exp_name in experiments:
