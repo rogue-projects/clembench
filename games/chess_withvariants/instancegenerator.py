@@ -78,7 +78,7 @@ class ChessGameInstanceGenerator(GameInstanceGenerator):
                 for j in ['','no']:
                     filename= f'resources/{i}_{j}preamble_prompt.template'
                     template = self.load_template(filename)
-                    exp_ending = '_{i}_{j}preamble' 
+                    exp_ending = f'_{i}_{j}preamble' 
                     for board_reminder in [True,False] :
                         exp_ending += '' if  not board_reminder else f'_reminder'
                         experiment = self.add_experiment(exp_name+ exp_ending)
