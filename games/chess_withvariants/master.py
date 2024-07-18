@@ -63,8 +63,8 @@ class Chess(GameMaster):
         self.white = ChessPlayer(self.white_model, 'w', self.board)
         self.black = ChessPlayer(self.black_model, 'b', self.board)
 
-        self.white_acc = [0] * (n_turns + 1)
-        self.black_acc = [0] * (n_turns + 1)
+        self.white_acc = [0.] * (n_turns + 1)
+        self.black_acc = [0.] * (n_turns + 1)
         # initialise common metrics
         self.request_counts = [0] * (n_turns + 1)
         self.parsed_request_counts = [0] * (n_turns + 1)
@@ -394,9 +394,9 @@ class ChessGameScorer(GameScorer):
         val_err = val_err[:limit]
         # accuracy metrics
         if episode_interactions['Target player'] == 'w':# we only want white
-            acc = episode_interactions['White acc'] 
+            acc = episode_interactions['White acc'][::2]
         else:
-            acc = episode_interactions['Black acc'] 
+            acc = episode_interactions['Black acc'][1::2]
         return reqs,p_reqs,v_reqs,parse_err,val_err,acc
 
 
@@ -427,9 +427,9 @@ class ChessGameScorer(GameScorer):
         retries =  sum(parse_err)+ sum(val_err)
 
         #complete_turns = episode_interactions['Complete turns']
-        parse_failrate = (sum(val_err)+sum(parse_err))/sum(reqs)
-        val_failrate = sum(val_err)/sum(reqs)
-        acc = [i for i in acc if i != -1.]
+        parse_failrate = 1 if sum(reqs) == 0 else (sum(val_err)+sum(parse_err))/sum(reqs)
+        val_failrate = 1 if sum(reqs) == 0 else sum(val_err)/sum(reqs)
+        acc = [i for i in acc if not i  in [-1.,0.]]
         avg_acc = np.mean([i/max(acc) for i in acc])
         # Seems good enough until I care to make something better
         bench_list = [1.-parse_failrate,1.-val_failrate,avg_acc]
@@ -451,7 +451,7 @@ class ChessGameScorer(GameScorer):
         self.log_episode_score(ms.METRIC_REQUEST_COUNT, sum(reqs))
         self.log_episode_score(ms.METRIC_REQUEST_COUNT_PARSED, sum(p_reqs))
         self.log_episode_score(ms.METRIC_REQUEST_COUNT_VIOLATED, sum(v_reqs))
-        self.log_episode_score(ms.METRIC_REQUEST_SUCCESS, sum(p_reqs) / sum(reqs))
+        self.log_episode_score(ms.METRIC_REQUEST_SUCCESS, 0 if sum(reqs) == 0 else sum(p_reqs) / sum(reqs))
         self.log_episode_score("Parse Rate",1 - parse_failrate)
         self.log_episode_score("Validity Rate",1 - val_failrate)
 
