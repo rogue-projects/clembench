@@ -423,10 +423,9 @@ class ChessGameScorer(GameScorer):
         parsed= sum(reqs) - sum(parse_error)
         val_failrate = 1 if  parsed <= 0  else sum(val_err)/ parsed
         acc = [i for i in acc if not i  in [-1.,0.]]
-        avg_acc = np.mean([i/max(acc) for i in acc]) if len(acc) > 0  else 0.
-        # Seems good enough until I care to make something better
+        avg_acc = statistics.harmonic_mean([i/max(acc) for i in acc]) if len(acc) > 0  else 0.
         bench_list = [1.-real_parse_failrate,1.-val_failrate,avg_acc]
-        bench_score = statistics.harmonic_mean(bench_list) if not aborted else 0.
+        bench_score = 100*statistics.harmonic_mean(bench_list) if not aborted else 0.
         #print(type(bench_score))
         #print(bench_score)
         self.log_episode_score(ms.METRIC_ABORTED, aborted)

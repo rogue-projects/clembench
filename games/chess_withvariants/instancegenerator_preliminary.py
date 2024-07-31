@@ -61,50 +61,64 @@ class ChessGameInstanceGenerator(GameInstanceGenerator):
         
         #self.baseline_template = self.load_template('resources/terse_prompt_baseline.template')
         experiments = {
-            'baseline' : (lambda :generateBoard()),
-            #'random_8_figures' : (lambda :self.randomBoard(piece_amount=8)),
-            'random_16_figures' : (lambda :self.randomBoard()),
-            #'random_24_figures' : (lambda :self.randomBoard(piece_amount=24)),
-            'chess960_1' : (lambda :(chess.Board.from_chess960_pos(random.randint(0,959)).fen().split()[0])),
-            #'chess960_2' : (lambda :(chess.Board.from_chess960_pos(random.randint(0,959)).fen().split()[0])),
-            #'chess960_2' : (lambda :(chess.Board.from_chess960_pos(random.randint(0,959)).fen().split()[0]))
+            #'baseline' : (lambda :generateBoard()),
+            #'random_16_figures' : (lambda :self.randomBoard()),
+            #'chess960_1' : (lambda :(chess.Board.from_chess960_pos(random.randint(0,959)).fen().split()[0])),
         }
         #experiments = {  'baseline' : (lambda :generateBoard())}
-        n_turns = [6,30]
         n_turns = [10]
         #n_turns = [400]
-        
+
         for exp_name in experiments:
             for  i in ['verbose','brief']:
-                for j in ['','no']:
-                    exp_ending = f'_{i}_{j}preamble' 
-                    filename= f'resources/{exp_ending}_prompt.template'
-                    template = self.load_template(filename)
-                    for board_reminder in [True,False] :
-                        exp_ending += '' if  not board_reminder else f'_reminder'
-                        experiment = self.add_experiment(exp_name+ exp_ending)
-                        for idx,num in enumerate(n_turns):
-                            instance = self.add_game_instance(experiment,idx)
-                            instance['board']=  (experiments[exp_name])()
-                            instance['n_turns']= num
-                            instance['board_reminder'] = board_reminder
-                            board= str(chess.Board(fen=instance['board']))
-                            variant = ""
-                            pieces = ""
-                            if exp_name.split('_')[0] == 'random':
-                                pieces = exp_name.split('_')[1]
-                                variant = "You are playing a variant of chess where each player plays with " +pieces+ "randomised pieces."
-                            elif exp_name.split('_')[0] == 'chess960':
-                                variant = "You are playing a game of Fischer random chess (Chess960)."
-                            prompt = string.Template(template) \
-                                    .substitute(skill='expert',board=board,variant=variant)
-                            
-                            instance['initial_prompt'] = prompt
+                exp_ending = f'{i}_nopreamble' 
+                filename= f'resources/{exp_ending}_prompt.template'
+                template = self.load_template(filename)
+                for board_reminder in [True,False] :
+                    exp_ending += '' if  not board_reminder else f'_reminder'
+                    experiment = self.add_experiment(exp_name+'_'+ exp_ending)
+                    for idx,num in enumerate(n_turns):
+                        instance = self.add_game_instance(experiment,idx)
+                        instance['board']=  (experiments[exp_name])()
+                        instance['n_turns']= num
+                        instance['board_reminder'] = board_reminder
+                        board= str(chess.Board(fen=instance['board']))
+                        variant = ""
+                        pieces = ""
+                        if exp_name.split('_')[0] == 'random':
+                            pieces = exp_name.split('_')[1]
+                            variant = "You are playing a variant of chess where each player plays with " +pieces+ "randomised pieces."
+                        elif exp_name.split('_')[0] == 'chess960':
+                            variant = "You are playing a game of Fischer random chess (Chess960)."
+                        prompt = string.Template(template) \
+                                .substitute(skill='expert',board=board,variant=variant)
+                        instance['initial_prompt'] = prompt
+            #for j in ['','no']:
+            #    exp_ending = f'verbose_{j}preamble' 
+            #    filename= f'resources/{exp_ending}_prompt.template'
+            #    template = self.load_template(filename)
+            #    for board_reminder in [True,False] :
+            #        exp_ending += '' if  not board_reminder else f'_reminder'
+            #        experiment = self.add_experiment(exp_name+'_'+ exp_ending)
+            #        for idx,num in enumerate(n_turns):
+            #            instance = self.add_game_instance(experiment,idx)
+            #            instance['board']=  (experiments[exp_name])()
+            #            instance['n_turns']= num
+            #            instance['board_reminder'] = board_reminder
+            #            board= str(chess.Board(fen=instance['board']))
+            #            variant = ""
+            #            pieces = ""
+            #            if exp_name.split('_')[0] == 'random':
+            #                pieces = exp_name.split('_')[1]
+            #                variant = "You are playing a variant of chess where each player plays with " +pieces+ "randomised pieces."
+            #            elif exp_name.split('_')[0] == 'chess960':
+            #                variant = "You are playing a game of Fischer random chess (Chess960)."
+            #            prompt = string.Template(template) \
+            #                    .substitute(skill='expert',board=board,variant=variant)
+            #            instance['initial_prompt'] = prompt
 
-        
 
     ##TODO: TEST
-   
     ###UNTESTED FUNCTION
     def evaluateBoardFair(self,board):
         """
