@@ -36,7 +36,7 @@ class Chess(GameMaster):
             self.target_player = 'b'
             self.white_model = player_backends[1]
             self.black_model = player_backends[0]
-        self.max_prompt_retries = 4#7
+        self.max_prompt_retries = 7
         self.engine =  chess.engine.SimpleEngine.popen_uci(get_path_stockfish_bin())
 
         # initialise attributes that will be used for the evaluation scores
@@ -420,7 +420,7 @@ class ChessGameScorer(GameScorer):
         #complete_turns = episode_interactions['Complete turns']
         parse_failrate = 1 if sum(reqs) == 0 else (sum(val_err)+sum(parse_err))/sum(reqs)
         real_parse_failrate = 1 if sum(reqs) == 0 else sum(parse_err)/sum(reqs)
-        parsed= sum(reqs) - sum(parse_error)
+        parsed= sum(reqs) - sum(parse_err)
         val_failrate = 1 if  parsed <= 0  else sum(val_err)/ parsed
         acc = [i for i in acc if not i  in [-1.,0.]]
         avg_acc = statistics.harmonic_mean([i/max(acc) for i in acc]) if len(acc) > 0  else 0.
