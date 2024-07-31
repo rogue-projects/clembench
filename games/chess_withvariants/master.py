@@ -214,7 +214,6 @@ class Chess(GameMaster):
 
     def turn(self) -> None:
         """Perform a game turn, a single utterance by black or white."""
-        
 
         # Figure out whose turn it is
         next_player = 'w'
@@ -224,8 +223,8 @@ class Chess(GameMaster):
             #print(f'LASTMOVE {last_move}')
             last_player ='b' if chess.BLACK==self.board.color_at(last_move.to_square) else 'w'
             next_player = 'b' if last_player=='w' else 'w'
-        
-        
+
+
         # get next player reply and add it to its history
         next_move = self._get_utterance(next_player)
 
@@ -263,17 +262,9 @@ class Chess(GameMaster):
         else: 
             cpscorepre = infopre.get("score").black().score()
             cpscorepost = infopost.get("score").black().score()
-        print(self.board)
-        #print(self.board.is_checkmate()) 
-        #print(self.board.is_stalemate()) 
-        #print(infopre) 
-        #print(infopost) 
-        #print(cpscorepre) 
-        #print(cpscorepost) 
         if not(cpscorepre is None or cpscorepost is None): 
             winchance_premove = 100 / (1 + np.exp(-0.00368208 * cpscorepre))
             winchance_postmove = 100 / (1 + np.exp(-0.00368208 * cpscorepost))
-            
             acc = 103.1668 * np.exp(-0.04354 * (winchance_premove - winchance_postmove)) - 3.1669
             if next_player == 'w':
                 self.white_acc[self.current_turn] = acc
@@ -428,11 +419,13 @@ class ChessGameScorer(GameScorer):
 
         #complete_turns = episode_interactions['Complete turns']
         parse_failrate = 1 if sum(reqs) == 0 else (sum(val_err)+sum(parse_err))/sum(reqs)
-        val_failrate = 1 if sum(reqs) == 0 else sum(val_err)/sum(reqs)
+        real_parse_failrate = 1 if sum(reqs) == 0 else sum(parse_err)/sum(reqs)
+        parsed= sum(reqs) - sum(parse_error)
+        val_failrate = 1 if  parsed <= 0  else sum(val_err)/ parsed
         acc = [i for i in acc if not i  in [-1.,0.]]
         avg_acc = np.mean([i/max(acc) for i in acc]) if len(acc) > 0  else 0.
         # Seems good enough until I care to make something better
-        bench_list = [1.-parse_failrate,1.-val_failrate,avg_acc]
+        bench_list = [1.-real_parse_failrate,1.-val_failrate,avg_acc]
         bench_score = statistics.harmonic_mean(bench_list) if not aborted else 0.
         #print(type(bench_score))
         #print(bench_score)
@@ -451,7 +444,7 @@ class ChessGameScorer(GameScorer):
         self.log_episode_score(ms.METRIC_REQUEST_COUNT_PARSED, sum(p_reqs))
         self.log_episode_score(ms.METRIC_REQUEST_COUNT_VIOLATED, sum(v_reqs))
         self.log_episode_score(ms.METRIC_REQUEST_SUCCESS, 0 if sum(reqs) == 0 else sum(p_reqs) / sum(reqs))
-        self.log_episode_score("Parse Rate",1 - parse_failrate)
+        self.log_episode_score("Parse Rate",1 - real_parse_failrate)
         self.log_episode_score("Validity Rate",1 - val_failrate)
 
 
