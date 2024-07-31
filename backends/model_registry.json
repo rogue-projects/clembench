@@ -30,6 +30,11 @@
     "backend": "openai_compatible"
   },
   {
+    "model_name": "Meta-Llama-3.1-405B-Instruct-Turbo",
+    "model_id": "meta-llama/Meta-Llama-3.1-405B-Instruct-Turbo",
+    "backend": "openai_compatible"
+  },
+  {
     "model_name": "Mixtral-8x22B-Instruct-v0.1",
     "model_id": "mistralai/Mixtral-8x22B-Instruct-v0.1",
     "backend": "openai_compatible"
@@ -59,6 +64,13 @@
   {
     "model_name": "gpt-4o-2024-05-13",
     "model_id": "gpt-4o-2024-05-13",
+    "backend": "openai",
+    "supports_images": true,
+    "support_multiple_images": true
+  },
+  {
+    "model_name": "gpt-4o-mini-2024-07-18",
+    "model_id": "gpt-4o-mini-2024-07-18",
     "backend": "openai",
     "supports_images": true,
     "support_multiple_images": true
@@ -526,6 +538,59 @@
     "eos_to_cull": "<|end_of_turn|>"
   },
   {
+    "model_name": "Qwen2-7B-Instruct",
+    "backend": "huggingface_local",
+    "huggingface_id": "Qwen/Qwen2-7B-Instruct",
+    "premade_chat_template": true,
+    "eos_to_cull": "<|im_end|>"
+  },
+  {
+    "model_name": "Qwen2-72B-Instruct",
+    "backend": "huggingface_local",
+    "huggingface_id": "Qwen/Qwen2-72B-Instruct",
+    "premade_chat_template": true,
+    "eos_to_cull": "<|im_end|>"
+  },
+  {
+    "model_name": "Llama-3-SauerkrautLM-70b-Instruct",
+    "backend": "huggingface_local",
+    "huggingface_id": "VAGOsolutions/Llama-3-SauerkrautLM-70b-Instruct",
+    "premade_chat_template": true,
+    "eos_to_cull": "<|eot_id|>"
+  },
+  {
+    "model_name": "aya-23-8B",
+    "backend": "huggingface_local",
+    "requires_api_key": true,
+    "huggingface_id": "CohereForAI/aya-23-8B",
+    "premade_chat_template": true,
+    "eos_to_cull": "<|END_OF_TURN_TOKEN|>"
+  },
+  {
+    "model_name": "aya-23-35B",
+    "backend": "huggingface_local",
+    "requires_api_key": true,
+    "huggingface_id": "CohereForAI/aya-23-35B",
+    "premade_chat_template": true,
+    "eos_to_cull": "<|END_OF_TURN_TOKEN|>"
+  },
+  {
+    "model_name": "gemma-2-9b-it",
+    "backend": "huggingface_local",
+    "requires_api_key": true,
+    "huggingface_id": "google/gemma-2-9b-it",
+    "premade_chat_template": true,
+    "eos_to_cull": "<end_of_turn>\n*<eos>"
+  },
+  {
+    "model_name": "gemma-2-27b-it",
+    "backend": "huggingface_local",
+    "requires_api_key": true,
+    "huggingface_id": "google/gemma-2-27b-it",
+    "premade_chat_template": true,
+    "eos_to_cull": "<end_of_turn>\n*<eos>"
+  },
+  {
     "model_name": "llama-2-7b-chat-hf",
     "backend": "huggingface_local",
     "requires_api_key": true,
@@ -588,6 +653,30 @@
     "huggingface_id": "google/recurrentgemma-2b-it",
     "premade_chat_template": true,
     "eos_to_cull": "<eos>"
+  },
+  {
+    "model_name": "Meta-Llama-3.1-8B-Instruct",
+    "backend": "huggingface_local",
+    "requires_api_key": true,
+    "huggingface_id": "meta-llama/Meta-Llama-3.1-8B-Instruct",
+    "premade_chat_template": true,
+    "eos_to_cull": "<|eot_id|>"
+  },
+  {
+    "model_name": "Meta-Llama-3.1-70B-Instruct",
+    "backend": "huggingface_local",
+    "requires_api_key": true,
+    "huggingface_id": "meta-llama/Meta-Llama-3.1-70B-Instruct",
+    "premade_chat_template": true,
+    "eos_to_cull": "<|eot_id|>"
+  },
+  {
+    "model_name": "Mistral-Large-Instruct-2407",
+    "backend": "huggingface_local",
+    "requires_api_key": true,
+    "huggingface_id": "mistralai/Mistral-Large-Instruct-2407",
+    "premade_chat_template": true,
+    "eos_to_cull": "</s>"
   },
   {
     "model_name": "Qwen1.5-0.5B-Chat-GGUF-q8",
